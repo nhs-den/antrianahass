@@ -414,6 +414,11 @@ const server = http.createServer((req, res) => {
         statics.send(res, 'manifest.webmanifest', { cache: true });
         return;
       }
+      if (p.startsWith('/assets/')) {
+        // logo bawaan & ikon milik panel (bukan milik DDMS)
+        statics.send(res, p.slice(1), { cache: true });
+        return;
+      }
       if (p.startsWith('/__ahass/static/')) {
         const rel = p.slice('/__ahass/static/'.length);
         statics.send(res, rel, { cache: true });
