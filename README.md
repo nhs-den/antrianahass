@@ -443,6 +443,7 @@ antrianahass/
 ├── deploy/
 │   ├── install.sh / update.sh / migrate.sh / uninstall.sh
 │   ├── install-ulasan.sh     # layanan widget ulasan-google (port 3000)
+│   ├── fix-kiosk.sh          # diagnosis + perbaikan layar kiosk (X/Chromium)
 │   ├── start-kiosk.sh
 │   ├── ahass-panel.service
 │   ├── ahass-kiosk.service
@@ -464,7 +465,8 @@ antrianahass/
 
 | Gejala | Penyebab & solusi |
 |---|---|
-| Layar hitam / hanya kursor | Chromium belum ada atau X gagal. Cek `journalctl -u ahass-kiosk -n 50`. Pastikan `apt install chromium`. |
+| Layar hitam / hanya kursor | Chromium belum ada atau X gagal start. Jalankan **`sudo bash deploy/fix-kiosk.sh`** (memasang chromium/xauth, menguji, dan bila perlu memakai mode root). Cek juga `journalctl -u ahass-kiosk -n 50`. |
+| `ahass-kiosk` exited status=1 berulang | Biasanya Chromium tidak terpasang (skrip berhenti dalam milidetik) atau Xorg tidak boleh membuka `/dev/tty1`. `fix-kiosk.sh` menangani keduanya. |
 | "Belum tersambung ke DDMS" | Kiosk tidak bisa internet atau alamat salah. Cek menu Ringkasan → **Tes koneksi**. |
 | Halaman DDMS tampil tapi tidak login | Jalankan **Tes login otomatis**; periksa user/password; isi selector manual. |
 | Login berhasil lalu kembali ke halaman login | Situs memakai cookie `SameSite=None; Secure` + HTTPS; panel sudah mengubahnya ke `Lax`. Bila masih gagal, coba aktifkan **Abaikan sertifikat SSL tidak valid** hanya jika sertifikat DDMS memang bermasalah. |

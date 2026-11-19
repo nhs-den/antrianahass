@@ -48,7 +48,7 @@ if [ "$INSTALL_DEPS" = "1" ]; then
   log "Memperbarui daftar paket…"
   apt-get update -qq || warn "apt-get update gagal, lanjut dengan cache lama."
 
-  PACKAGES="ca-certificates fonts-dejavu-core xserver-xorg xinit x11-xserver-utils unclutter"
+  PACKAGES="ca-certificates fonts-dejavu-core xserver-xorg xinit xauth x11-xserver-utils unclutter"
 
   if ! command -v node >/dev/null 2>&1; then
     PACKAGES="$PACKAGES nodejs"
@@ -158,6 +158,17 @@ if command -v chromium >/dev/null 2>&1 || command -v chromium-browser >/dev/null
   if [ "${AHASS_SKIP_KIOSK:-0}" != "1" ]; then
     log "Menjalankan layar kiosk…"
     systemctl restart ahass-kiosk.service || true
+    sleep 5
+    KIOSK_STATE="$(systemctl show -p SubState --value ahass-kiosk.service 2>/dev/null || echo unknown)"
+    if [ "$KIOSK_STATE" != "running" ]; then
+      warn "Layar kiosk belum berjalan (state: $KIOSK_STATE)."
+      echo "----- 12 baris log terakhir ahass-kiosk -----"
+      journalctl -u ahass-kiosk -n 12 --no-pager 2>/dev/null || true
+      echo "---------------------------------------------"
+      warn "Coba perbaiki otomatis: sudo bash $APP_DIR/deploy/fix-kiosk.sh"
+    else
+      ok "Layar kiosk berjalan."
+    fi
   fi
 else
   warn "Lewati layar kiosk (Chromium belum ada)."

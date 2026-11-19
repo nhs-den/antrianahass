@@ -6,7 +6,22 @@ set -e
 
 export DISPLAY="${DISPLAY:-:0}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/ahass-kiosk}"
+export HOME="${HOME:-/home/$(id -un)}"
 mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null || true
+
+# Tunggu X server siap (maks 10 detik) supaya Chromium tidak gagal terhubung.
+X_SCREEN="${DISPLAY#*:}"
+X_SCREEN="${X_SCREEN%%.*}"
+SOCKET="/tmp/.X11-unix/X${X_SCREEN}"
+i=0
+while [ ! -S "$SOCKET" ] && [ $i -lt 20 ]; do
+  sleep 0.5
+  i=$((i + 1))
+done
+if [ ! -S "$SOCKET" ]; then
+  echo "X server tidak siap pada $DISPLAY (socket $SOCKET tidak ada)." >&2
+  echo "Periksa: sudo bash /opt/antrianahass/deploy/fix-kiosk.sh" >&2
+fi
 
 URL="${AHASS_URL:-http://127.0.0.1:8080/}"
 PROFILE_DIR="${AHASS_PROFILE_DIR:-/var/lib/antrianahass/chromium}"
@@ -38,8 +53,11 @@ done
 
 if [ -z "$CHROME" ]; then
   echo "Chromium tidak ditemukan. Pasang dengan: apt-get install -y chromium" >&2
+  echo "Atau jalankan: sudo bash /opt/antrianahass/deploy/fix-kiosk.sh" >&2
   exit 1
 fi
+
+echo "Menjalankan $CHROME untuk $URL (DISPLAY=$DISPLAY)" >&2
 
 DEFAULT_FLAGS="--kiosk --no-first-run --no-default-browser-check --noerrdialogs \
 --disable-infobars --disable-session-crashed-bubble --disable-translate --disable-sync \
