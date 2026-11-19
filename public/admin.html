@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Admin — Panel AHASS</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/__ahass/static/admin.css">
+</head>
+<body>
+
+<!-- ============================ LOGIN ============================ -->
+<div class="login-wrap" id="loginView" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <img src="/assets/logo.png" alt="" class="login-logo">
+    <h1>Admin Panel AHASS</h1>
+    <p class="muted">Masuk untuk mengatur tampilan kiosk.</p>
+    <label class="field">
+      <span>Password admin</span>
+      <input type="password" id="loginPassword" name="password" autocomplete="current-password" required autofocus>
+    </label>
+    <button class="btn primary block" type="submit" id="loginBtn">Masuk</button>
+    <div class="form-msg" id="loginMsg"></div>
+  </form>
+</div>
+
+<!-- ============================ APP ============================ -->
+<div class="app" id="appView" hidden>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <img src="/assets/logo.png" alt="">
+      <div>
+        <strong>Panel AHASS</strong>
+        <span class="muted" id="versionLabel">v-</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn ghost" href="/" target="_blank" rel="noopener">Buka panel ↗</a>
+      <button class="btn primary" id="saveBtn" type="button">Simpan perubahan</button>
+      <button class="btn ghost" id="logoutBtn" type="button">Keluar</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="tabs" id="tabs">
+      <button class="tab is-active" data-target="status">Ringkasan</button>
+      <button class="tab" data-target="ddms">Web DDMS</button>
+      <button class="tab" data-target="logo">Logo</button>
+      <button class="tab" data-target="reviews">Ulasan Google</button>
+      <button class="tab" data-target="images">Kotak 4 · Gambar</button>
+      <button class="tab" data-target="videos">Kotak 5 · Video</button>
+      <button class="tab" data-target="display">Tampilan</button>
+      <button class="tab" data-target="security">Keamanan</button>
+    </nav>
+
+    <main class="content">
+
+      <!-- ---------------------------- RINGKASAN ---------------------------- -->
+      <section class="panel is-active" data-panel="status">
+        <h2>Ringkasan sistem</h2>
+        <p class="muted">Status server panel dan koneksi ke web DDMS.</p>
+
+        <div class="stat-grid" id="statGrid">
+          <div class="stat"><span>Memuat…</span></div>
+        </div>
+
+        <div class="card">
+          <h3>Uji koneksi DDMS</h3>
+          <p class="muted small">Mengecek apakah server web DDMS dapat dihubungi dari kiosk ini.</p>
+          <div class="row">
+            <button class="btn" id="pingBtn" type="button">Tes koneksi</button>
+            <button class="btn" id="loginTestBtn" type="button">Tes login otomatis</button>
+          </div>
+          <pre class="result" id="testResult" hidden></pre>
+        </div>
+
+        <div class="card">
+          <h3>Petunjuk singkat</h3>
+          <ul class="tips">
+            <li>Panel kiri menampilkan 5 kotak: jam, logo, ulasan Google, gambar, dan video.</li>
+            <li>Perubahan tersimpan langsung ke panel kiosk (tanpa perlu restart).</li>
+            <li>Login otomatis DDMS memakai user &amp; password yang diisi di menu <b>Web DDMS</b>.</li>
+            <li>Alamat panel: <code id="panelUrl">-</code> · alamat admin: <code>/admin</code></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ------------------------------ DDMS ------------------------------ -->
+      <section class="panel" data-panel="ddms">
+        <h2>Web DDMS</h2>
+        <p class="muted">Alamat web DDMS yang ditampilkan di 70% layar kanan.</p>
+
+        <div class="card">
+          <label class="switch">
+            <input type="checkbox" id="dEnabled">
+            <span>Tampilkan menu DDMS di panel</span>
+          </label>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>Alamat web DDMS</span>
+              <input type="url" id="dBaseUrl" placeholder="https://web-h2-cbr.daya-dms.id">
+              <small>Hanya alamat utama, tanpa <code>/ddms</code>.</small>
+            </label>
+            <label class="field">
+              <span>Path halaman</span>
+              <input type="text" id="dPath" placeholder="/ddms">
+              <small>Halaman yang dibuka di layar kanan.</small>
+            </label>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" id="dAutoLogin">
+            <span>Login otomatis (isi user &amp; password di bawah)</span>
+          </label>
+
+          <div class="grid-2">
+            <label class="field">
+              <span>Username</span>
+              <input type="text" id="dUser" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="field">
+              <span>Password</span>
+              <input type="password" id="dPass" autocomplete="new-password" spellcheck="false">
+              <small id="passHint">Kosongkan bila tidak ingin mengubah password tersimpan.</small>
+            </label>
+          </div>
+
+          <div class="grid-3">
+            <label class="field">
+              <span>Reload otomatis (menit)</span>
+              <input type="number" id="dReload" min="0" max="1440" step="5">
+              <small>0 = tidak pernah. Berguna untuk membersihkan sesi.</small>
+            </label>
+            <label class="field">
+              <span>Batasi tinggi</span>
+              <input type="text" value="70% layar kanan" disabled>
+            </label>
+            <label class="switch" style="align-self:end">
+              <input type="checkbox" id="dInsecure">
+              <span>Abaikan sertifikat SSL tidak valid</span>
+            </label>
+          </div>
+
+          <details class="advanced">
+            <summary>Pengaturan lanjutan (pemilih form login)</summary>
+            <p class="muted small">Biarkan kosong agar panel mendeteksi otomatis field login. Isi hanya jika login otomatis gagal.</p>
+            <div class="grid-3">
+              <label class="field">
+                <span>Selector username</span>
+                <input type="text" id="dUserSel" placeholder="#username">
+              </label>
+              <label class="field">
+                <span>Selector password</span>
+                <input type="text" id="dPassSel" placeholder="input[type=password]">
+              </label>
+              <label class="field">
+                <span>Selector tombol login</span>
+                <input type="text" id="dSubmitSel" placeholder="button[type=submit]">
+              </label>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ------------------------------ LOGO ------------------------------ -->
+      <section class="panel" data-panel="logo">
+        <h2>Logo &amp; identitas</h2>
+        <p class="muted">Logo tampil di kotak ke-2 panel kiri.</p>
+
+        <div class="card">
+          <div class="logo-row">
+            <div class="logo-preview"><img id="logoPreview" src="/assets/logo.png" alt="Pratinjau logo"></div>
+            <div class="logo-controls">
+              <label class="field">
+                <span>Unggah logo baru (PNG/JPG/WEBP/SVG, maks 5 MB)</span>
+                <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+              </label>
+              <label class="field">
+                <span>atau URL logo</span>
+                <input type="text" id="lUrl" placeholder="https://… atau /assets/logo.png">
+              </label>
+              <button class="btn ghost" id="logoResetBtn" type="button">Kembalikan logo bawaan</button>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <label class="field">
+              <span>Nama bengkel</span>
+              <input type="text" id="lTitle" placeholder="AHASS Munjul Motor">
+            </label>
+            <label class="field">
+              <span>Slogan</span>
+              <input type="text" id="lSub" placeholder="One HEART">
+            </label>
+            <label class="field">
+              <span>Keterangan</span>
+              <input type="text" id="lTagline" placeholder="Honda Authorized Service Station">
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------- ULASAN ----------------------------- -->
+      <section class="panel" data-panel="reviews">
+        <h2>Ulasan Google</h2>
+        <p class="muted">Kotak ke-3. Pilih sumber data ulasan.</p>
+
+        <div class="card">
+          <label class="field">
+            <span>Sumber ulasan</span>
+            <select id="rMode">
+              <option value="script">Widget ulasan-google — tempel snippet loader.js (paling mudah)</option>
+              <option value="off">Nonaktifkan</option>
+              <option value="ulasan">JSON dari service ulasan-google (butuh endpoint JSON)</option>
+              <option value="places">Google Places API (butuh API key)</option>
+              <option value="embed">Embed halaman ulasan-google (butuh URL halaman)</option>
+            </select>
+          </label>
+
+          <div data-mode="script">
+            <p class="muted small">
+              Tempel kode embed dari aplikasi <code>ulasan-google</code> di kolom bawah — atau biarkan
+              kosong dan cukup isi port (bawaannya <code>3000</code>) agar snippet dibuat otomatis.
+              Widget dijalankan di dalam kotak ke-3, terpisah dari panel.
+            </p>
+            <label class="field">
+              <span>Kode embed (opsional)</span>
+              <textarea id="rScriptCode" rows="4" spellcheck="false"
+                placeholder="&lt;script&gt;(function(){var p=document.currentScript.parentNode; … }());&lt;/script&gt;"></textarea>
+              <small>Bila diisi, kode ini dipakai apa adanya (mengalahkan isian port/path di bawah).</small>
+            </label>
+            <div class="grid-3">
+              <label class="field">
+                <span>Port service ulasan</span>
+                <input type="number" id="rScriptPort" min="1" max="65535" placeholder="3000">
+              </label>
+              <label class="field">
+                <span>Path loader</span>
+                <input type="text" id="rScriptPath" placeholder="/loader.js">
+              </label>
+              <label class="field">
+                <span>Query</span>
+                <input type="text" id="rScriptQuery" placeholder="kiosk=1">
+              </label>
+            </div>
+            <label class="field">
+              <span>Host service (opsional)</span>
+              <input type="text" id="rScriptHost" placeholder="kosongkan bila ulasan-google jalan di perangkat yang sama">
+              <small>Contoh: <code>192.168.1.20</code> bila service berjalan di komputer lain.</small>
+            </label>
+            <div class="row">
+              <button class="btn ghost" id="scriptPreviewBtn" type="button">Buka pratinjau widget ↗</button>
+            </div>
+          </div>
+
+          <div data-mode="ulasan">
+            <label class="field">
+              <span>URL JSON ulasan</span>
+              <input type="url" id="rUlasanUrl" placeholder="https://ulasan.contoh.id/api/reviews?place=…">
+              <small>Endpoint JSON dari aplikasi <code>ulasan-google</code> Anda. Format fleksibel
+                (<code>reviews[]</code> dengan <code>author_name</code>, <code>text</code>, <code>rating</code>, …).</small>
+            </label>
+          </div>
+
+          <div data-mode="places">
+            <div class="grid-2">
+              <label class="field">
+                <span>Place ID atau nama tempat</span>
+                <input type="text" id="rPlaceId" placeholder="ChIJ… / AHASS Munjul Motor">
+              </label>
+              <label class="field">
+                <span>Google API key</span>
+                <input type="password" id="rApiKey" autocomplete="off" placeholder="•••••• (tersimpan)">
+                <small id="apiKeyHint">Kosongkan bila tidak diubah.</small>
+              </label>
+            </div>
+          </div>
+
+          <div data-mode="embed">
+            <label class="field">
+              <span>URL halaman embed</span>
+              <input type="url" id="rEmbedUrl" placeholder="https://ulasan.contoh.id/widget?place=…">
+              <small>Ditampilkan di dalam kotak ke-3 (iframe).</small>
+            </label>
+          </div>
+
+          <div class="grid-3">
+            <label class="field">
+              <span>Bahasa</span>
+              <input type="text" id="rLang" placeholder="id">
+            </label>
+            <label class="field">
+              <span>Maksimal ulasan</span>
+              <input type="number" id="rMax" min="1" max="20">
+            </label>
+            <label class="field">
+              <span>Cache (menit)</span>
+              <input type="number" id="rCache" min="2" max="1440">
+            </label>
+            <label class="field">
+              <span>Muat ulang kotak ulasan (menit)</span>
+              <input type="number" id="rRefresh" min="0" max="1440">
+              <small>0 = tidak pernah. Berlaku untuk mode snippet &amp; embed.</small>
+            </label>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" id="rAvatar">
+            <span>Tampilkan foto profil pemberi ulasan</span>
+          </label>
+
+          <div class="row">
+            <button class="btn" id="reviewTestBtn" type="button">Tes ambil ulasan</button>
+            <button class="btn ghost" id="reviewCacheBtn" type="button">Kosongkan cache</button>
+          </div>
+          <pre class="result" id="reviewResult" hidden></pre>
+        </div>
+      </section>
+
+      <!-- ------------------------------ IMAGES --------------------------- -->
+      <section class="panel" data-panel="images">
+        <h2>Kotak 4 · Gambar</h2>
+        <p class="muted">Foto dari link Instagram, Facebook, Google Drive, atau URL gambar langsung.
+          Gambar bergantian otomatis bila lebih dari satu.</p>
+
+        <div class="card">
+          <div class="add-row">
+            <label class="field">
+              <span>Link gambar / postingan</span>
+              <input type="text" id="giUrl" placeholder="https://www.instagram.com/p/… atau https://…/foto.jpg">
+            </label>
+            <label class="field">
+              <span>Keterangan (opsional)</span>
+              <input type="text" id="giCaption" placeholder="Promo servis berkala">
+            </label>
+            <button class="btn primary" id="giAdd" type="button">Tambah</button>
+          </div>
+          <p class="muted small">Link postingan Instagram/Facebook otomatis ditampilkan sebagai embed.</p>
+          <ul class="item-list" id="imageList"></ul>
+        </div>
+      </section>
+
+      <!-- ------------------------------ VIDEOS --------------------------- -->
+      <section class="panel" data-panel="videos">
+        <h2>Kotak 5 · Video</h2>
+        <p class="muted">YouTube, Instagram Reels, Facebook, TikTok, Vimeo, atau file MP4.
+          Video diputar bergantian sesuai durasi di menu Tampilan.</p>
+
+        <div class="card">
+          <div class="add-row">
+            <label class="field">
+              <span>Link video</span>
+              <input type="text" id="gvUrl" placeholder="https://www.youtube.com/watch?v=…">
+            </label>
+            <label class="field">
+              <span>Keterangan (opsional)</span>
+              <input type="text" id="gvCaption" placeholder="Dokumentasi servis">
+            </label>
+            <button class="btn primary" id="gvAdd" type="button">Tambah</button>
+          </div>
+          <ul class="item-list" id="videoList"></ul>
+        </div>
+      </section>
+
+      <!-- ------------------------------ DISPLAY -------------------------- -->
+      <section class="panel" data-panel="display">
+        <h2>Tampilan panel</h2>
+        <p class="muted">Pengaturan tata letak layar kiri.</p>
+
+        <div class="card">
+          <label class="field">
+            <span>Lebar panel kiri: <b id="leftValue">30%</b></span>
+            <input type="range" id="dLeft" min="20" max="60" step="1">
+            <small>Layar kanan (DDMS) otomatis mengikuti sisanya.</small>
+          </label>
+
+          <div class="grid-3">
+            <label class="field">
+              <span>Jeda ulasan &amp; gambar (detik)</span>
+              <input type="number" id="dRotate" min="4" max="120">
+            </label>
+            <label class="field">
+              <span>Jeda video (detik)</span>
+              <input type="number" id="dVideo" min="5" max="300">
+            </label>
+            <label class="field">
+              <span>Tema</span>
+              <select id="dTheme">
+                <option value="dark">Gelap</option>
+                <option value="light">Terang</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="switch-row">
+            <label class="switch"><input type="checkbox" id="dClock24"><span>Format 24 jam</span></label>
+            <label class="switch"><input type="checkbox" id="dSeconds"><span>Tampilkan detik</span></label>
+            <label class="switch"><input type="checkbox" id="dCursor"><span>Sembunyikan kursor</span></label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ------------------------------ SECURITY ------------------------- -->
+      <section class="panel" data-panel="security">
+        <h2>Keamanan</h2>
+        <p class="muted">Password untuk masuk ke halaman admin ini.</p>
+
+        <div class="card">
+          <div class="grid-3">
+            <label class="field">
+              <span>Password saat ini</span>
+              <input type="password" id="secCurrent" autocomplete="current-password">
+            </label>
+            <label class="field">
+              <span>Password baru</span>
+              <input type="password" id="secNext" autocomplete="new-password">
+            </label>
+            <label class="field">
+              <span>Ulangi password baru</span>
+              <input type="password" id="secConfirm" autocomplete="new-password">
+            </label>
+          </div>
+          <button class="btn primary" id="passwordBtn" type="button">Ubah password</button>
+          <p class="muted small" id="passwordUpdatedHint"></p>
+        </div>
+
+        <div class="card">
+          <h3>Tentang</h3>
+          <p class="muted small">
+            Panel AHASS berjalan tanpa dependensi Node.js, cocok untuk Intel Compute Stick / DietPi.
+            Data tersimpan di <code id="configPath">-</code>.
+          </p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/__ahass/static/admin.js"></script>
+</body>
+</html>

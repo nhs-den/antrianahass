@@ -1,0 +1,11 @@
+{
+  "name": "AHASS Munjul Motor — Panel Antrian",
+  "short_name": "AHASS",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#0b1017",
+  "theme_color": "#0b1017",
+  "icons": [
+    { "src": "/assets/logo.png", "sizes": "640x640", "type": "image/png" }
+  ]
+}

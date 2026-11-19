@@ -1,0 +1,11 @@
+# data runtime (konfigurasi, rahasia, unggahan)
+/data/
+*.log
+
+# dependensi (aplikasi tidak butuh dependensi runtime)
+/node_modules/
+package-lock.json
+
+# berkas sistem
+.DS_Store
+Thumbs.db

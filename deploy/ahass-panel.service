@@ -1,0 +1,35 @@
+[Unit]
+Description=Panel Display AHASS - server (Node.js)
+Documentation=file:///opt/antrianahass/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ahass
+Group=ahass
+WorkingDirectory=/opt/antrianahass
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=HOST=0.0.0.0
+Environment=AHASS_DATA_DIR=/var/lib/antrianahass
+ExecStart=/usr/bin/node /opt/antrianahass/server.js
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-panel
+
+# batasi pemakaian sumber daya pada perangkat kecil
+MemoryMax=384M
+TasksMax=128
+
+# pengamanan dasar
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/var/lib/antrianahass
+
+[Install]
+WantedBy=multi-user.target
