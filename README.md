@@ -303,12 +303,36 @@ sudo -u ahass AHASS_DATA_DIR=/var/lib/antrianahass \
 node /opt/antrianahass/scripts/doctor.js   # pemeriksaan kesehatan
 ```
 
-**Perbarui aplikasi** (tanpa menghapus konfigurasi):
+### Memperbarui aplikasi (tanpa install ulang)
+
+Tidak perlu instalasi ulang. Kode dan data dipisah:
+
+| Lokasi | Isi | Saat update |
+|---|---|---|
+| `/opt/antrianahass` | kode program | **ditimpa** versi baru |
+| `/var/lib/antrianahass` | `config.json`, password admin, `secret.key`, logo unggahan | **tidak disentuh** |
+
+```bash
+cd /root/antrianahass
+sudo bash deploy/update.sh
+```
+
+`deploy/update.sh` melakukan: `git pull` → salin kode baru → restart panel & layar
+kiosk (paket apt tidak dipasang ulang, jadi aman walau internet sedang lambat).
+Setara dengan perintah manual berikut bila ingin lebih terkendali:
 
 ```bash
 cd /root/antrianahass && git pull
 sudo bash deploy/install.sh --no-deps
+sudo systemctl restart ahass-kiosk        # agar Chromium memuat panel versi baru
 ```
+
+Setelah update, cek versi di **admin → Ringkasan** (atau `curl -s localhost:8080/__ahass/api/config`).
+Bidang konfigurasi baru otomatis ditambahkan dengan nilai bawaan — isian lama
+(alamat DDMS, user/password, logo, kotak 4 & 5) tetap seperti sebelumnya.
+
+> Jangan pakai `deploy/uninstall.sh --purge` untuk update — perintah itu menghapus
+> folder data beserta konfigurasi.
 
 **Lepas aplikasi:**
 
@@ -373,7 +397,7 @@ antrianahass/
 │   ├── autologin.js          # pengisi form login DDMS
 │   └── assets/logo.png
 ├── deploy/
-│   ├── install.sh / uninstall.sh
+│   ├── install.sh / update.sh / uninstall.sh
 │   ├── start-kiosk.sh
 │   ├── ahass-panel.service
 │   ├── ahass-kiosk.service
@@ -408,6 +432,8 @@ antrianahass/
 | Jam/tanggal salah | Set zona waktu: `sudo timedatectl set-timezone Asia/Jakarta`. |
 | Layar mati sendiri | DPMS. `start-kiosk.sh` sudah mematikan; bila monitor punya *auto-off*, matikan di menu monitor. |
 | Admin minta login terus | Cookie terblokir; buka lewat `http://ip:8080/admin` (bukan `https`). |
+| Apakah update perlu install ulang? | Tidak. Jalankan `sudo bash deploy/update.sh`; konfigurasi di `/var/lib/antrianahass` tetap utuh. |
+| Setelah update tampilan tidak berubah | Restart kiosk: `sudo systemctl restart ahass-kiosk` (aset teks sudah dibuat `no-cache`, jadi biasanya cukup reload). |
 | Lupa password admin | `sudo -u ahass AHASS_DATA_DIR=/var/lib/antrianahass node /opt/antrianahass/scripts/reset-password.js` |
 
 ---
