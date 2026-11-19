@@ -84,6 +84,50 @@ Skrip pemasang akan:
 > **BIOS:** aktifkan *"Restore AC Power Loss = Power On"* agar kiosk menyala
 > sendiri setelah listrik mati.
 
+### Sudah punya folder lama + folder baru?
+
+Bila versi sebelumnya ada di `~/ahass` (dijalankan manual / belum lewat
+`install.sh`) dan versi baru ada di `~/antrianahass`, jangan langsung hapus
+folder lama — konfigurasi (alamat DDMS, user/password, logo, kotak 4 & 5)
+kemungkinan masih ada di `~/ahass/data/`.
+
+```bash
+# 1. lihat apa yang sedang berjalan
+systemctl status ahass-panel ahass-kiosk --no-pager
+ss -ltnp | grep -E ':8080|:3000'
+
+# 2. migrasikan konfigurasi lama + pasang versi baru (satu perintah)
+sudo bash ~/antrianahass/deploy/migrate.sh --from ~/ahass
+
+# 3. setelah panel baru terbukti jalan, folder lama boleh dibuang
+mv ~/ahass ~/ahass-lama
+```
+
+`migrate.sh` akan: mencari `config.json`/`secret.key`/logo pada instalasi lama,
+menyalinnya ke `/var/lib/antrianahass` (dengan cadangan), menghentikan proses
+panel lama yang masih memakai port 8080 (dengan konfirmasi), lalu memasang
+versi baru. Tambahkan `--dry-run` untuk melihat rencananya tanpa mengubah apa pun.
+
+> Hasil ekstrak ZIP **bukan** repo git. `deploy/update.sh` tetap bisa dipakai
+> (hanya melewati langkah `git pull`), tapi untuk update berikutnya lebih mudah
+> pakai `git clone https://github.com/nhs-den/antrianahass.git` lalu `git pull`.
+
+### Menjalankan widget ulasan-google sebagai layanan (port 3000)
+
+Kotak ulasan mode *snippet* membutuhkan service `ulasan-google` hidup di port 3000
+setiap kali perangkat menyala. Ada pemasang otomatis yang mendeteksi jenis
+aplikasinya (Node / PHP / Python / `start.sh`):
+
+```bash
+sudo bash deploy/install-ulasan.sh --dir ~/ulasan-google-main
+# uji:  curl -I http://127.0.0.1:3000/loader.js
+```
+
+Skrip ini memasang dependensi bila perlu, membuat `ulasan-google.service`
+(restart otomatis, jalan sebagai pemilik folder), lalu memverifikasi
+`/loader.js` membalas 200. Gunakan `--dry-run` untuk melihat perintah start yang
+dideteksi sebelum dipasang.
+
 ### Menjalankan tanpa instalasi (mode uji)
 
 ```bash
@@ -397,7 +441,8 @@ antrianahass/
 │   ├── autologin.js          # pengisi form login DDMS
 │   └── assets/logo.png
 ├── deploy/
-│   ├── install.sh / update.sh / uninstall.sh
+│   ├── install.sh / update.sh / migrate.sh / uninstall.sh
+│   ├── install-ulasan.sh     # layanan widget ulasan-google (port 3000)
 │   ├── start-kiosk.sh
 │   ├── ahass-panel.service
 │   ├── ahass-kiosk.service
@@ -432,6 +477,7 @@ antrianahass/
 | Jam/tanggal salah | Set zona waktu: `sudo timedatectl set-timezone Asia/Jakarta`. |
 | Layar mati sendiri | DPMS. `start-kiosk.sh` sudah mematikan; bila monitor punya *auto-off*, matikan di menu monitor. |
 | Admin minta login terus | Cookie terblokir; buka lewat `http://ip:8080/admin` (bukan `https`). |
+| Punya folder lama `ahass` dan baru `antrianahass` | Jalankan `sudo bash ~/antrianahass/deploy/migrate.sh --from ~/ahass`; jangan hapus folder lama sebelum panel baru terbukti jalan. |
 | Apakah update perlu install ulang? | Tidak. Jalankan `sudo bash deploy/update.sh`; konfigurasi di `/var/lib/antrianahass` tetap utuh. |
 | Setelah update tampilan tidak berubah | Restart kiosk: `sudo systemctl restart ahass-kiosk` (aset teks sudah dibuat `no-cache`, jadi biasanya cukup reload). |
 | Lupa password admin | `sudo -u ahass AHASS_DATA_DIR=/var/lib/antrianahass node /opt/antrianahass/scripts/reset-password.js` |
