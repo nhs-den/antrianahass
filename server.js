@@ -17,6 +17,7 @@ const reviews = require('./lib/reviews');
 const statics = require('./lib/static');
 const ddms = require('./lib/ddms');
 const proxy = require('./lib/proxy');
+const ulasanPage = require('./lib/ulasan-page');
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -129,7 +130,7 @@ function buildPatch(body) {
 
   if (src.reviews) {
     const r = src.reviews;
-    const mode = ['off', 'places', 'ulasan', 'embed'].indexOf(r.mode) !== -1 ? r.mode : 'off';
+    const mode = ['off', 'script', 'places', 'ulasan', 'embed'].indexOf(r.mode) !== -1 ? r.mode : 'off';
     patch.reviews = {
       mode: mode,
       placeId: cleanText(r.placeId, 300),
@@ -138,7 +139,16 @@ function buildPatch(body) {
       embedUrl: util.sanitizeUrl(r.embedUrl),
       maxReviews: clampInt(r.maxReviews, 1, 20, 10),
       cacheMinutes: clampInt(r.cacheMinutes, 2, 1440, 60),
-      showAvatar: r.showAvatar !== false
+      showAvatar: r.showAvatar !== false,
+      refreshMinutes: clampInt(r.refreshMinutes, 0, 1440, 30),
+      script: {
+        // snippet disimpan apa adanya (maks 8 KB), sisanya parameter pembangkit URL
+        code: String((r.script && r.script.code) || '').trim().slice(0, 8192),
+        host: cleanText(r.script && r.script.host, 120).replace(/^https?:\/\//i, '').replace(/\/+$/, ''),
+        port: clampInt(r.script && r.script.port, 1, 65535, 3000),
+        path: cleanText(r.script && r.script.path, 200) || '/loader.js',
+        query: cleanText(r.script && r.script.query, 200)
+      }
     };
     if (typeof r.apiKey === 'string' && r.apiKey.length) {
       patch.reviews.apiKey = cleanText(r.apiKey, 200);
@@ -417,6 +427,18 @@ const server = http.createServer((req, res) => {
       if (p.startsWith('/assets/')) {
         // logo bawaan & ikon milik panel (bukan milik DDMS)
         statics.send(res, p.slice(1), { cache: true });
+        return;
+      }
+      if (p === '/__ahass/ulasan' || p === '/__ahass/ulasan/') {
+        const html = ulasanPage.render(config.get());
+        const body = Buffer.from(html);
+        res.writeHead(200, {
+          'content-type': 'text/html; charset=utf-8',
+          'content-length': body.length,
+          'cache-control': 'no-store',
+          'x-frame-options': 'SAMEORIGIN'
+        });
+        res.end(body);
         return;
       }
       if (p.startsWith('/__ahass/static/')) {

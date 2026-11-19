@@ -137,6 +137,13 @@
     $('rEmbedUrl').value = cfg.reviews.embedUrl || '';
     $('rMax').value = cfg.reviews.maxReviews || 10;
     $('rCache').value = cfg.reviews.cacheMinutes || 60;
+    $('rRefresh').value = cfg.reviews.refreshMinutes != null ? cfg.reviews.refreshMinutes : 30;
+    var rs = cfg.reviews.script || {};
+    $('rScriptCode').value = rs.code || '';
+    $('rScriptPort').value = rs.port || 3000;
+    $('rScriptPath').value = rs.path || '/loader.js';
+    $('rScriptQuery').value = rs.query || 'kiosk=1';
+    $('rScriptHost').value = rs.host || '';
     $('rAvatar').checked = !!cfg.reviews.showAvatar;
     updateModeFields();
 
@@ -227,7 +234,15 @@
         embedUrl: $('rEmbedUrl').value.trim(),
         maxReviews: Number($('rMax').value) || 10,
         cacheMinutes: Number($('rCache').value) || 60,
-        showAvatar: $('rAvatar').checked
+        refreshMinutes: Number($('rRefresh').value) || 0,
+        showAvatar: $('rAvatar').checked,
+        script: {
+          code: $('rScriptCode').value,
+          host: $('rScriptHost').value.trim(),
+          port: Number($('rScriptPort').value) || 3000,
+          path: $('rScriptPath').value.trim() || '/loader.js',
+          query: $('rScriptQuery').value.trim()
+        }
       },
       gallery: {
         images: state.images,
@@ -513,6 +528,10 @@
         })
         .catch(function (err) { showResult($('reviewResult'), '❌ ' + err.message, false); })
         .finally(function () { btn.disabled = false; });
+    });
+
+    $('scriptPreviewBtn').addEventListener('click', function () {
+      window.open('/__ahass/ulasan', '_blank', 'noopener');
     });
 
     $('reviewCacheBtn').addEventListener('click', function () {

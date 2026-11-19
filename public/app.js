@@ -205,6 +205,7 @@
 
   function renderReviewEmbed(url) {
     var body = $('reviewBody');
+    clearTimer('reviewFrame');
     body.innerHTML = '';
     var stage = document.createElement('div');
     stage.className = 'media-stage';
@@ -223,6 +224,14 @@
     body.appendChild(stage);
     $('ratingSummary').style.display = 'none';
     $('reviewCta').hidden = true;
+
+    // muat ulang berkala agar ulasan baru ikut tampil
+    var minutes = Number(state.cfg && state.cfg.reviews && state.cfg.reviews.refreshMinutes) || 0;
+    if (minutes > 0 && url) {
+      setTimer('reviewFrame', function () {
+        frame.src = url + (url.indexOf('?') === -1 ? '?' : '&') + '_r=' + Date.now();
+      }, minutes * 60 * 1000);
+    }
   }
 
   function renderReviews(data) {
@@ -299,10 +308,17 @@
       $('ratingSummary').style.display = 'none';
       $('reviewCta').hidden = true;
       clearTimer('reviews');
+      clearTimer('reviewFrame');
       return;
     }
     if (cfg.reviews.mode === 'embed') {
       renderReviews({ ok: true, mode: 'embed', embedUrl: cfg.reviews.embedUrl });
+      clearTimer('reviews');
+      return;
+    }
+    if (cfg.reviews.mode === 'script') {
+      // widget ulasan-google (loader.js) dijalankan di halaman terpisah + iframe
+      renderReviews({ ok: true, mode: 'embed', embedUrl: cfg.reviews.scriptUrl || '/__ahass/ulasan' });
       clearTimer('reviews');
       return;
     }

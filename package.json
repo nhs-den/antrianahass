@@ -13,7 +13,8 @@
     "reset-password": "node scripts/reset-password.js",
     "doctor": "node scripts/doctor.js",
     "mock": "node scripts/mock-ddms.js",
-    "mock:reviews": "node scripts/mock-reviews.js"
+    "mock:reviews": "node scripts/mock-reviews.js",
+    "mock:widget": "node scripts/mock-ulasan-widget.js"
   },
   "keywords": [
     "ahass",

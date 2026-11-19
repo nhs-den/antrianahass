@@ -163,6 +163,7 @@ input[type="url"],
 input[type="password"],
 input[type="number"],
 input[type="file"],
+textarea,
 select {
   width: 100%;
   padding: 9px 11px;
@@ -174,7 +175,14 @@ select {
   font-family: inherit;
   outline: none;
 }
-input:focus, select:focus {
+textarea {
+  resize: vertical;
+  min-height: 74px;
+  font-family: ui-monospace, "DejaVu Sans Mono", Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.16);
 }

@@ -211,12 +211,49 @@
           <label class="field">
             <span>Sumber ulasan</span>
             <select id="rMode">
+              <option value="script">Widget ulasan-google — tempel snippet loader.js (paling mudah)</option>
               <option value="off">Nonaktifkan</option>
-              <option value="ulasan">JSON dari service ulasan-google (rekomendasi)</option>
+              <option value="ulasan">JSON dari service ulasan-google (butuh endpoint JSON)</option>
               <option value="places">Google Places API (butuh API key)</option>
-              <option value="embed">Embed halaman ulasan-google (iframe)</option>
+              <option value="embed">Embed halaman ulasan-google (butuh URL halaman)</option>
             </select>
           </label>
+
+          <div data-mode="script">
+            <p class="muted small">
+              Tempel kode embed dari aplikasi <code>ulasan-google</code> di kolom bawah — atau biarkan
+              kosong dan cukup isi port (bawaannya <code>3000</code>) agar snippet dibuat otomatis.
+              Widget dijalankan di dalam kotak ke-3, terpisah dari panel.
+            </p>
+            <label class="field">
+              <span>Kode embed (opsional)</span>
+              <textarea id="rScriptCode" rows="4" spellcheck="false"
+                placeholder="&lt;script&gt;(function(){var p=document.currentScript.parentNode; … }());&lt;/script&gt;"></textarea>
+              <small>Bila diisi, kode ini dipakai apa adanya (mengalahkan isian port/path di bawah).</small>
+            </label>
+            <div class="grid-3">
+              <label class="field">
+                <span>Port service ulasan</span>
+                <input type="number" id="rScriptPort" min="1" max="65535" placeholder="3000">
+              </label>
+              <label class="field">
+                <span>Path loader</span>
+                <input type="text" id="rScriptPath" placeholder="/loader.js">
+              </label>
+              <label class="field">
+                <span>Query</span>
+                <input type="text" id="rScriptQuery" placeholder="kiosk=1">
+              </label>
+            </div>
+            <label class="field">
+              <span>Host service (opsional)</span>
+              <input type="text" id="rScriptHost" placeholder="kosongkan bila ulasan-google jalan di perangkat yang sama">
+              <small>Contoh: <code>192.168.1.20</code> bila service berjalan di komputer lain.</small>
+            </label>
+            <div class="row">
+              <button class="btn ghost" id="scriptPreviewBtn" type="button">Buka pratinjau widget ↗</button>
+            </div>
+          </div>
 
           <div data-mode="ulasan">
             <label class="field">
@@ -261,6 +298,11 @@
             <label class="field">
               <span>Cache (menit)</span>
               <input type="number" id="rCache" min="2" max="1440">
+            </label>
+            <label class="field">
+              <span>Muat ulang kotak ulasan (menit)</span>
+              <input type="number" id="rRefresh" min="0" max="1440">
+              <small>0 = tidak pernah. Berlaku untuk mode snippet &amp; embed.</small>
             </label>
           </div>
 

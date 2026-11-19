@@ -172,18 +172,59 @@ browser sekali pakai lewat token berumur 3 menit.
 
 ## 6. Widget ulasan Google
 
-Ada 3 pilihan sumber data di menu **Ulasan Google**:
+Ada 4 cara memasang widget di kotak ke-3. **Kalau Anda hanya punya snippet
+`loader.js` dari `ulasan-google`, pakai mode nomor 1.**
 
-### a. JSON dari service `ulasan-google` (rekomendasi)
+| Mode | Yang dibutuhkan | Kapan dipakai |
+|---|---|---|
+| **1. Widget ulasan-google (snippet)** | kode embed `<script>…loader.js…</script>` | Aplikasi `ulasan-google` dijalankan sendiri (port **3000**) — **paling mudah** |
+| 2. JSON service | URL endpoint JSON | Bila `ulasan-google` menyediakan API JSON |
+| 3. Google Places API | API key + Place ID | Tanpa service tambahan, langsung ke Google |
+| 4. Embed halaman | URL halaman siap pakai | Bila `ulasan-google` punya halaman HTML sendiri |
 
-Isi **URL JSON ulasan**, misalnya hasil deploy
-[`nhs-den/ulasan-google`](https://github.com/nhs-den/ulasan-google):
+### Mode 1 — tempel snippet `loader.js` (rekomendasi)
 
+Snippet dari `ulasan-google` bentuknya seperti ini:
+
+```html
+<script>(function(){var p=document.currentScript.parentNode;function l(){var s=document.createElement('script');s.async=true;s.src='http://'+(location.hostname||'127.0.0.1')+':3000/loader.js?kiosk=1';s.onerror=function(){s.remove();setTimeout(l,3000);};p.appendChild(s);}l();})();</script>
 ```
-https://ulasan.contoh.id/api/reviews?place=AHASS+Munjul+Motor
-```
 
-Panel menerima bentuk JSON yang fleksibel, contoh:
+Langkah pemasangan:
+
+1. Jalankan aplikasi `ulasan-google` di perangkat (biasanya `node …` atau Docker)
+   sehingga melayani **port 3000**.
+2. Buka admin → **Ulasan Google** → pilih
+   **“Widget ulasan-google — tempel snippet loader.js”**.
+3. Tempel snippet di kolom **Kode embed**, lalu **Simpan**.
+   (Boleh juga dikosongkan: panel akan membuat snippet yang sama otomatis dari
+   isian **Port 3000**, **Path `/loader.js`**, **Query `kiosk=1`**.)
+4. Klik **Buka pratinjau widget** untuk memastikan tampil, lalu lihat panel kiosk.
+
+Catatan penting:
+
+- Snippet memakai `location.hostname`, jadi bila panel dibuka dari
+  `http://127.0.0.1:8080` widget akan memanggil `http://127.0.0.1:3000/loader.js`.
+  Artinya **service ulasan-google harus berjalan di perangkat yang sama**
+  (Compute Stick itu sendiri).
+  Bila service ada di komputer lain, isi **Host service** (mis. `192.168.1.20`)
+  atau ganti `location.hostname` pada snippet menjadi IP tersebut.
+- Widget dijalankan **di dalam iframe** (`/__ahass/ulasan`) supaya CSS/JS-nya
+  tidak merusak tata letak panel, dan sebaliknya.
+- Bila service belum siap saat kiosk menyala, snippet otomatis mencoba ulang
+  tiap 3 detik; kotak menampilkan pesan “Widget ulasan belum termuat” sampai
+  service hidup.
+- **Muat ulang kotak ulasan** (menu yang sama, bawaan 15–30 menit) membuat
+  widget diambil ulang agar ulasan baru ikut tampil. Isi `0` untuk mematikan.
+
+> Catatan: repo `nhs-den/ulasan-google` bersifat privat, jadi panel memakai
+> adapter generik. Untuk mencoba tanpa service asli, jalankan
+> `npm run mock:widget` (port 3000) — kotak ke-3 akan menampilkan widget tiruan.
+
+### Mode 2 — JSON service
+
+Isi **URL JSON ulasan**, mis. `https://ulasan.contoh.id/api/reviews?place=…`.
+Panel menerima bentuk JSON yang fleksibel:
 
 ```json
 {
@@ -205,31 +246,24 @@ Panel menerima bentuk JSON yang fleksibel, contoh:
 
 Nama field alternatif juga dikenali (`author`, `text.text`, `stars`, `time`,
 `userRatingCount`, `data.reviews`, `result.reviews`, dan seterusnya). Endpoint
-harus mengembalikan JSON tanpa perlu autentikasi browser (dipanggil dari server,
-jadi tidak terkena CORS).
+dipanggil dari server, jadi tidak terkena CORS.
 
-> Catatan: repo `nhs-den/ulasan-google` tidak dapat diakses publik saat aplikasi
-> ini dibuat. Karena itu panel memakai adapter generik — cukup arahkan ke endpoint
-> JSON service tersebut, atau gunakan salah satu mode lain di bawah.
-
-### b. Google Places API (tanpa service tambahan)
+### Mode 3 — Google Places API
 
 1. Buat API key di Google Cloud Console, aktifkan **Places API (New)**.
 2. Isi **Place ID** (`ChIJ…`) atau nama tempat (`AHASS Munjul Motor`).
 3. Isi **API key**.
 
 Panel memanggil `places.googleapis.com` dari server (API key tidak pernah
-dikirim ke browser) dan menyimpan hasilnya di cache sesuai isian *Cache (menit)*.
+dikirim ke browser) dan menyimpan hasilnya sesuai isian **Cache (menit)**.
 
-### c. Embed halaman ulasan-google
+### Mode 4 — Embed halaman
 
-Bila service `ulasan-google` Anda punya halaman HTML siap pakai, isi **URL
-halaman embed** dan halaman itu ditampilkan langsung di kotak ke-3.
+Bila `ulasan-google` punya halaman HTML siap pakai, isi **URL halaman embed**
+dan halaman itu ditampilkan langsung di kotak ke-3.
 
 Tombol **Tes ambil ulasan** menampilkan hasil parsing (rating, jumlah ulasan,
-3 ulasan pertama) sehingga mudah dicek sebelum tampil di layar.
-
----
+3 ulasan pertama) untuk mode 2 dan 3.
 
 ## 7. Kotak 4 (gambar) dan Kotak 5 (video)
 
@@ -328,6 +362,7 @@ antrianahass/
 │   ├── reviews.js            # adapter ulasan Google (3 mode)
 │   ├── ddms.js               # tes koneksi & tes login
 │   ├── static.js             # penyaji file statis
+│   ├── ulasan-page.js        # halaman iframe widget ulasan-google (loader.js)
 │   └── util.js
 ├── public/
 │   ├── index.html            # panel kiosk (5 kotak + iframe DDMS)
@@ -365,6 +400,9 @@ antrianahass/
 | Halaman DDMS tampil tapi tidak login | Jalankan **Tes login otomatis**; periksa user/password; isi selector manual. |
 | Login berhasil lalu kembali ke halaman login | Situs memakai cookie `SameSite=None; Secure` + HTTPS; panel sudah mengubahnya ke `Lax`. Bila masih gagal, coba aktifkan **Abaikan sertifikat SSL tidak valid** hanya jika sertifikat DDMS memang bermasalah. |
 | Ulasan tidak muncul | Mode `off`? URL JSON/API key salah? Lihat **Tes ambil ulasan**. |
+| “Widget ulasan belum termuat” | Service `ulasan-google` belum jalan di port 3000. Cek `curl http://127.0.0.1:3000/loader.js`, lalu pastikan service otomatis start saat boot. |
+| Widget jalan di laptop tapi tidak di kiosk | Snippet memakai `location.hostname`; isi **Host service** dengan IP perangkat yang menjalankan `ulasan-google`. |
+| Widget tampil di panel ber-HTTPS tapi tidak di HTTP (atau sebaliknya) | Konten `http://` diblokir di halaman `https://`. Untuk kiosk selalu gunakan `http://127.0.0.1:8080` (sudah bawaan). |
 | Video YouTube hitam | Video dibatasi pemiliknya (embed dimatikan), atau butuh login. Ganti dengan video lain. |
 | Foto Instagram tidak tampil | Link post biasanya butuh embed; pastikan link berbentuk `/p/…` atau `/reel/…`. |
 | Jam/tanggal salah | Set zona waktu: `sudo timedatectl set-timezone Asia/Jakarta`. |
