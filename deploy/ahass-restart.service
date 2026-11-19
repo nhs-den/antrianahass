@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart harian panel AHASS (membersihkan memori kiosk)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart ahass-panel.service ahass-kiosk.service

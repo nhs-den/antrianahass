@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0b1017">
+<title>AHASS Munjul Motor</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/__ahass/static/style.css">
+</head>
+<body>
+<div id="app" class="shell">
+
+  <aside id="panel" class="panel" aria-label="Panel informasi">
+
+    <!-- KOTAK 1: jam & tanggal -->
+    <section class="box clock" id="boxClock">
+      <div class="clock-time" id="clockTime">--:--<span class="secs" id="clockSecs">:--</span></div>
+      <div class="clock-date" id="clockDate">Memuat tanggal…</div>
+      <div class="clock-meta">
+        <span class="status-pill" id="statusPill"><i></i><span>Menyiapkan…</span></span>
+        <span class="brand-mini" id="brandMini">AHASS</span>
+      </div>
+    </section>
+
+    <!-- KOTAK 2: logo -->
+    <section class="box logo" id="boxLogo">
+      <div class="logo-wrap">
+        <img id="logoImg" src="/assets/logo.png" alt="Logo AHASS Munjul Motor" decoding="async">
+      </div>
+      <div class="logo-text">
+        <div class="logo-title" id="logoTItle">AHASS Munjul Motor</div>
+        <div class="logo-sub" id="logoSub">One HEART</div>
+      </div>
+    </section>
+
+    <!-- KOTAK 3: ulasan Google -->
+    <section class="box reviews" id="boxReviews">
+      <div class="box-head">
+        <span class="box-label">Ulasan Google</span>
+        <span class="rating-summary" id="ratingSummary"><b id="ratingValue">–</b><span class="stars" id="ratingStars">★★★★★</span><em id="ratingCount"></em></span>
+      </div>
+      <div class="review-body" id="reviewBody">
+        <div class="review-empty" id="reviewEmpty">Memuat ulasan…</div>
+      </div>
+      <a class="review-cta" id="reviewCta" href="#" target="_blank" rel="noopener" hidden>Tulis ulasan di Google →</a>
+    </section>
+
+    <!-- KOTAK 4: gambar dari sosmed -->
+    <section class="box media images" id="boxImages">
+      <div class="box-head"><span class="box-label">Galeri</span><span class="dots" id="imageDots"></span></div>
+      <div class="media-stage" id="imageStage">
+        <img class="slide is-active" id="imgA" alt="" decoding="async">
+        <div class="media-empty" id="imageEmpty">Belum ada gambar.<br><small>Tambah link di halaman admin.</small></div>
+        <div class="media-caption" id="imageCaption"></div>
+      </div>
+    </section>
+
+    <!-- KOTAK 5: video youtube / sosmed -->
+    <section class="box media videos" id="boxVideos">
+      <div class="box-head"><span class="box-label">Video</span><span class="dots" id="videoDots"></span></div>
+      <div class="media-stage" id="videoStage">
+        <div class="media-empty" id="videoEmpty">Belum ada video.<br><small>Tambah link di halaman admin.</small></div>
+        <div class="media-caption" id="videoCaption"></div>
+      </div>
+    </section>
+
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="stage-overlay" id="stageOverlay" hidden>
+      <div class="overlay-card">
+        <strong>Menu DDMS dinonaktifkan</strong>
+        <span>Aktifkan kembali dari halaman admin.</span>
+      </div>
+    </div>
+    <iframe id="ddmsFrame" class="ddms-frame" title="DDMS" src="about:blank"
+            allow="autoplay; fullscreen; clipboard-read; clipboard-write"></iframe>
+  </main>
+
+</div>
+<script src="/__ahass/static/app.js"></script>
+</body>
+</html>

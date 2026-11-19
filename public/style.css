@@ -1,0 +1,483 @@
+/* ==========================================================================
+   AHASS Panel — styling ringan untuk kiosk (tanpa framework, tanpa blur/filter)
+   ========================================================================== */
+
+:root {
+  --bg: #060a0f;
+  --shell-pad: 8px;
+  --gap: 8px;
+  --box: #101821;
+  --box-2: #0d141c;
+  --line: #1d2937;
+  --text: #e9f1f9;
+  --muted: #8ea3b9;
+  --accent: #e11d48;
+  --accent-2: #ff4d6d;
+  --accent-soft: rgba(225, 29, 72, 0.14);
+  --star: #fbbf24;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --radius: 12px;
+  --left: 30%;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #eef2f6;
+  --box: #ffffff;
+  --box-2: #f6f9fc;
+  --line: #dbe3ec;
+  --text: #0d1b2a;
+  --muted: #5b7085;
+  --accent-soft: rgba(225, 29, 72, 0.1);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "DejaVu Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeSpeed;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+img { display: block; }
+
+.shell {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: var(--left) minmax(0, 1fr);
+  gap: var(--gap);
+  padding: var(--shell-pad);
+}
+
+.shell.hide-cursor,
+.shell.hide-cursor * { cursor: none !important; }
+
+/* ------------------------------------------------------------------ panel */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-height: 0;
+  min-width: 0;
+}
+
+.box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--box);
+  overflow: hidden;
+}
+
+.box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-bottom: 6px;
+}
+
+.box-label {
+  font-size: clamp(9px, 1.1vh, 13px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------- kotak 1: jam/tanggal */
+
+.clock { flex: 1.05 1 0; justify-content: center; gap: 2px; }
+
+.clock-time {
+  font-size: clamp(28px, 5.6vh, 68px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+:root[data-theme="light"] .clock-time { color: #0d1b2a; }
+
+.clock-time .secs {
+  font-size: 0.42em;
+  font-weight: 600;
+  color: var(--accent-2);
+  margin-left: 0.08em;
+  vertical-align: 0.55em;
+}
+
+.clock-date {
+  margin-top: clamp(3px, 0.5vh, 8px);
+  font-size: clamp(11px, 1.7vh, 20px);
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clock-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: clamp(5px, 1vh, 12px);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--box-2);
+  font-size: clamp(9px, 1.15vh, 12px);
+  font-weight: 600;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.status-pill i {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: 0 0 auto;
+}
+.status-pill.is-ok { color: #9ae6b4; border-color: rgba(34,197,94,.35); }
+.status-pill.is-ok i { background: var(--ok); }
+.status-pill.is-warn { color: #fcd34d; border-color: rgba(245,158,11,.35); }
+.status-pill.is-warn i { background: var(--warn); }
+.status-pill.is-err { color: #fda4af; border-color: rgba(244,63,94,.4); }
+.status-pill.is-err i { background: var(--accent); }
+
+.brand-mini {
+  font-size: clamp(9px, 1.1vh, 12px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- kotak 2: logo */
+
+.logo {
+  flex: 1 1 0;
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(8px, 1.4vh, 16px);
+  background: var(--box-2);
+}
+
+.logo-wrap {
+  flex: 0 0 auto;
+  height: 100%;
+  max-height: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-wrap img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.logo-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.logo-title {
+  font-size: clamp(12px, 2vh, 22px);
+  font-weight: 700;
+  line-height: 1.1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.logo-sub {
+  font-size: clamp(9px, 1.3vh, 14px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------- kotak 3: ulasan */
+
+.reviews { flex: 1.9 1 0; gap: 0; }
+
+.rating-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(9px, 1.2vh, 13px);
+  color: var(--muted);
+}
+.rating-summary b {
+  font-size: clamp(12px, 1.7vh, 18px);
+  color: var(--text);
+  font-weight: 700;
+}
+.rating-summary .stars { color: var(--star); letter-spacing: 0.5px; }
+.rating-summary em { font-style: normal; opacity: 0.8; }
+
+.review-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.review-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(3px, 0.7vh, 8px);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+.review-card.is-active { opacity: 1; }
+
+.review-stars { color: var(--star); font-size: clamp(10px, 1.5vh, 15px); letter-spacing: 1px; }
+
+.review-text {
+  font-size: clamp(10px, 1.5vh, 15px);
+  line-height: 1.42;
+  color: var(--text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+}
+
+.review-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(9px, 1.2vh, 12px);
+  color: var(--muted);
+  min-width: 0;
+}
+.review-who img {
+  width: clamp(16px, 2.2vh, 22px);
+  height: clamp(16px, 2.2vh, 22px);
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--line);
+}
+.review-who .who-name { color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review-who .who-time { white-space: nowrap; opacity: 0.75; }
+
+.review-empty {
+  font-size: clamp(10px, 1.4vh, 14px);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.review-cta {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  font-size: clamp(9px, 1.15vh, 12px);
+  font-weight: 600;
+  color: var(--accent-2);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------ kotak 4 & 5: media */
+
+.images { flex: 1.15 1 0; }
+.videos { flex: 1.55 1 0; }
+
+.media-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #05080c;
+}
+:root[data-theme="light"] .media-stage { background: #dde5ee; }
+
+.media-stage .slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.media-stage .slide.is-active { opacity: 1; }
+
+.media-stage iframe,
+.media-stage video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+  object-fit: cover;
+}
+
+.media-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  padding: 8px;
+  font-size: clamp(9px, 1.25vh, 12px);
+  color: var(--muted);
+  line-height: 1.4;
+}
+.media-empty small { font-size: 0.86em; opacity: 0.75; }
+.media-empty[hidden] { display: none; }
+
+.media-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 8px 6px;
+  font-size: clamp(9px, 1.15vh, 12px);
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.media-caption:empty { display: none; }
+
+.dots { display: inline-flex; gap: 4px; align-items: center; }
+.dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.3s ease;
+}
+.dots span.on { background: var(--accent); }
+
+/* ------------------------------------------------------------- stage */
+
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #0a0f15;
+  border: 1px solid var(--line);
+}
+
+.ddms-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+:root[data-theme="dark"] .ddms-frame { background: #0a0f15; }
+
+.stage-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 10, 15, 0.92);
+  text-align: center;
+  padding: 20px;
+}
+.stage-overlay[hidden] { display: none; }
+
+.overlay-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: clamp(12px, 1.5vh, 16px);
+}
+.overlay-card strong { color: var(--text); font-size: 1.3em; }
+
+/* --------------------------------------------------------- responsif */
+
+/* layar sempit / tegak (mis. monitor portrait atau tablet) */
+@media (max-width: 900px), (max-aspect-ratio: 1/1) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+  .panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    order: 2;
+  }
+  .box { padding: 7px 9px; }
+  .clock { grid-column: span 2; }
+  .reviews { grid-column: span 2; }
+  .images, .videos { grid-column: span 1; }
+  .stage { order: 1; }
+  .media-empty small { display: none; }
+}
+
+@media (max-width: 520px) {
+  :root { --gap: 6px; --shell-pad: 6px; }
+  .logo-text { display: none; }
+  .clock-meta { display: none; }
+  .review-text { -webkit-line-clamp: 4; }
+}
+
+/* layar sangat pendek (mis. 1024x600) */
+@media (max-height: 620px) {
+  .box { padding: 6px 9px; }
+  .clock-meta { margin-top: 4px; }
+  .box-head { margin-bottom: 3px; }
+  .review-text { -webkit-line-clamp: 3; }
+}
+
+/* mode kiosk: sembunyikan kursor & cegah seleksi */
+body.kiosk { cursor: none; }
+body.kiosk * { cursor: none !important; }

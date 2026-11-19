@@ -1,0 +1,29 @@
+[Unit]
+Description=Panel Display AHASS - Chromium kiosk (layar)
+After=ahass-panel.service systemd-user-sessions.service
+Wants=ahass-panel.service
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+User=kiosk
+Group=kiosk
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-kiosk
+Environment=AHASS_URL=http://127.0.0.1:8080/
+Environment=XDG_RUNTIME_DIR=/run/ahass-kiosk
+RuntimeDirectory=ahass-kiosk
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/xinit /opt/antrianahass/deploy/start-kiosk.sh -- :0 vt1 -nolisten tcp -nocursor
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
