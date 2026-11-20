@@ -1,0 +1,37 @@
+[Unit]
+Description=Panel Display AHASS - Chromium kiosk di tty1 (STB/Armbian)
+Documentation=file:///opt/antrianahass/README.md
+After=ahass-panel.service systemd-user-sessions.service
+Wants=ahass-panel.service
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+Type=simple
+User=__KIOSK_USER__
+Group=__KIOSK_USER__
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-kiosk
+Environment=AHASS_URL=http://127.0.0.1:8080/
+Environment=AHASS_PROFILE_DIR=__PROFILE_DIR__
+Environment=XDG_RUNTIME_DIR=/run/ahass-kiosk
+Environment="CHROMIUM_FLAGS=__CHROMIUM_FLAGS__"
+RuntimeDirectory=ahass-kiosk
+RuntimeDirectoryMode=0755
+# Tunggu panel benar-benar menjawab sebelum Chromium dibuka, supaya tidak
+# muncul halaman putih "This site can't be reached" saat boot.
+ExecStartPre=/usr/local/bin/ahass-wait-panel.sh
+ExecStart=/usr/bin/xinit /opt/antrianahass/deploy/start-kiosk.sh -- :0 vt1 -nolisten tcp -nocursor
+Restart=always
+RestartSec=5
+TimeoutStartSec=200
+
+[Install]
+WantedBy=multi-user.target
