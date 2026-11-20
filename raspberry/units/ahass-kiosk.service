@@ -1,0 +1,32 @@
+[Unit]
+Description=Panel Display AHASS - Chromium kiosk di tty1 (Raspberry Pi)
+Documentation=file:///opt/antrianahass/README.md
+After=ahass-panel.service systemd-user-sessions.service
+Wants=ahass-panel.service
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+User=__KIOSK_USER__
+Group=__KIOSK_USER__
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-kiosk
+Environment=AHASS_URL=http://127.0.0.1:8080/
+Environment=AHASS_PROFILE_DIR=/var/lib/antrianahass/chromium
+Environment=XDG_RUNTIME_DIR=/run/ahass-kiosk
+Environment=CHROMIUM_FLAGS=__CHROMIUM_FLAGS__
+RuntimeDirectory=ahass-kiosk
+RuntimeDirectoryMode=0755
+ExecStart=/usr/bin/xinit /opt/antrianahass/deploy/start-kiosk.sh -- :0 vt1 -nolisten tcp -nocursor
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Restart harian panel AHASS (membersihkan memori kiosk)
+After=ahass-panel.service
+
+[Service]
+Type=oneshot
+# Restart panel; layar hanya di-restart bila memang memakai unit ahass-kiosk
+# (mode kiosk). Pada mode desktop, Chromium dipegang autostart LXDE sehingga
+# cukup di-kill: launcher akan menghidupkannya kembali sendiri.
+# '[.]config' dipakai agar pkill tidak mencocokkan command line shell-nya
+# sendiri (kalau ditulis '.config' apa adanya, unit tercatat failed).
+ExecStart=/bin/sh -c 'systemctl restart ahass-panel.service; if systemctl is-active --quiet ahass-kiosk.service; then systemctl restart ahass-kiosk.service; fi; pkill -f "user-data-dir=__KIOSK_HOME__/[.]config/ahass-kiosk" || true'
