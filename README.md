@@ -43,7 +43,8 @@ tampil, dan animasi dibatasi pada `opacity` agar CPU/GPU tetap dingin.
 
 ## 2. Kebutuhan
 
-- Intel Compute Stick (x86_64, RAM 2 GB sudah cukup) — juga jalan di mini PC/Intel NUC/Raspberry Pi
+- Intel Compute Stick (x86_64, RAM 2 GB sudah cukup) — juga jalan di mini PC/Intel NUC
+- Raspberry Pi 3 B+ (DietPi, microSD 16 GB) — lihat [`raspberry/README.md`](raspberry/README.md)
 - DietPi (v10.x) atau Debian 12/Ubuntu 22.04+
 - Node.js **v18+** (`apt install nodejs`)
 - Chromium (`apt install chromium`)
@@ -55,6 +56,11 @@ total di bawah 400 MB.
 ---
 
 ## 3. Instalasi di DietPi
+
+> **Raspberry Pi 3 B+?** Jangan pakai `deploy/install.sh`. Gunakan pemasang
+> khusus Pi yang sudah menyetel memori 1 GB dan microSD 16 GB:
+> `sudo bash raspberry/install.sh` — panduan lengkap di
+> [`raspberry/README.md`](raspberry/README.md).
 
 ```bash
 # 1. masuk ke perangkat (SSH)
@@ -440,6 +446,12 @@ antrianahass/
 │   ├── patch.js              # menyelaraskan URL di dalam iframe DDMS
 │   ├── autologin.js          # pengisi form login DDMS
 │   └── assets/logo.png
+├── raspberry/                # pemasang khusus Raspberry Pi 3 B+ (DietPi, 16 GB)
+│   ├── install.sh / uninstall.sh
+│   ├── kiosk-desktop.sh      # launcher desktop: tunggu panel + watchdog
+│   ├── chromium-flags.conf   # flag hemat RAM 1 GB
+│   ├── units/                # ahass-panel, ahass-kiosk, ahass-restart
+│   └── README.md / dietpi-tweaks.md
 ├── deploy/
 │   ├── install.sh / update.sh / migrate.sh / uninstall.sh
 │   ├── install-ulasan.sh     # layanan widget ulasan-google (port 3000)

@@ -1,0 +1,37 @@
+[Unit]
+Description=Panel Display AHASS - server (Node.js, Raspberry Pi)
+Documentation=file:///opt/antrianahass/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ahass
+Group=ahass
+WorkingDirectory=/opt/antrianahass
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=HOST=0.0.0.0
+Environment=AHASS_DATA_DIR=/var/lib/antrianahass
+Environment=NODE_OPTIONS=--max-old-space-size=192
+ExecStart=/usr/bin/node /opt/antrianahass/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-panel
+
+# Perangkat 1 GB RAM: batasi agar Chromium tetap dapat memori.
+MemoryMax=320M
+TasksMax=96
+Nice=5
+
+# Pengamanan dasar.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/var/lib/antrianahass
+
+[Install]
+WantedBy=multi-user.target
