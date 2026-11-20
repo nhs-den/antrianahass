@@ -1,0 +1,37 @@
+[Unit]
+Description=Panel Display AHASS - server (Node.js, STB/Armbian)
+Documentation=file:///opt/antrianahass/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ahass
+Group=ahass
+WorkingDirectory=/opt/antrianahass
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=HOST=0.0.0.0
+Environment=AHASS_DATA_DIR=/var/lib/antrianahass
+Environment=NODE_OPTIONS=--max-old-space-size=192
+ExecStart=/usr/bin/node /opt/antrianahass/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-panel
+
+# Batasi agar Chromium tetap mendapat memori di RAM 2 GB.
+MemoryMax=384M
+TasksMax=128
+Nice=5
+
+# Pengamanan dasar.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/var/lib/antrianahass
+
+[Install]
+WantedBy=multi-user.target

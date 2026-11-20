@@ -20,6 +20,8 @@ MODE="${MODE:-auto}"
 INSTALL_DEPS=1
 APPLY_TWEAKS=1
 
+NODE_BIN="/usr/bin/node"
+
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PI_DIR="$SRC_DIR/raspberry"
 LAUNCHER="/usr/local/bin/ahass-kiosk-desktop.sh"
@@ -111,7 +113,8 @@ command -v node >/dev/null 2>&1 || die "Node.js tidak ada. Pasang: sudo apt-get 
 
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 [ "$NODE_MAJOR" -ge 18 ] || die "Node.js $(node -v) terlalu lama; butuh minimal v18."
-ok "Node.js $(node -v)"
+NODE_BIN="$(command -v node || echo /usr/bin/node)"
+ok "Node.js $(node -v) ($NODE_BIN)"
 
 CHROMIUM_BIN=""
 for candidate in chromium chromium-browser; do
@@ -205,6 +208,8 @@ fi
 if [ "$DATA_DIR" != "/var/lib/antrianahass" ]; then
   sed -i "s#/var/lib/antrianahass#$DATA_DIR#g" /etc/systemd/system/ahass-panel.service
 fi
+
+sed -i "s#^ExecStart=.*#ExecStart=$NODE_BIN /opt/antrianahass/server.js#" /etc/systemd/system/ahass-panel.service
 
 systemctl daemon-reload
 systemctl enable ahass-panel.service >/dev/null 2>&1

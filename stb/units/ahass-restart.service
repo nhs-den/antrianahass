@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart harian panel AHASS (membersihkan memori kiosk)
+After=ahass-panel.service
+
+[Service]
+Type=oneshot
+# Layar ikut di-restart bila unit kiosk aktif. '[.]config' dipakai agar pkill
+# tidak mencocokkan command line shell-nya sendiri.
+ExecStart=/bin/sh -c 'systemctl restart ahass-panel.service; if systemctl is-active --quiet ahass-kiosk.service; then systemctl restart ahass-kiosk.service; fi; pkill -f "user-data-dir=__KIOSK_HOME__/[.]config/ahass-kiosk" || true; pkill -f "user-data-dir=/var/lib/antrianahass/chromium" || true'

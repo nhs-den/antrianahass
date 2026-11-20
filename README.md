@@ -45,6 +45,7 @@ tampil, dan animasi dibatasi pada `opacity` agar CPU/GPU tetap dingin.
 
 - Intel Compute Stick (x86_64, RAM 2 GB sudah cukup) — juga jalan di mini PC/Intel NUC
 - Raspberry Pi 3 B+ (DietPi, microSD 16 GB) — lihat [`raspberry/README.md`](raspberry/README.md)
+- STB Amlogic S905X/S905W/S912 (Armbian/ophub) — lihat [`stb/README.md`](stb/README.md)
 - DietPi (v10.x) atau Debian 12/Ubuntu 22.04+
 - Node.js **v18+** (`apt install nodejs`)
 - Chromium (`apt install chromium`)
@@ -61,6 +62,11 @@ total di bawah 400 MB.
 > khusus Pi yang sudah menyetel memori 1 GB dan microSD 16 GB:
 > `sudo bash raspberry/install.sh` — panduan lengkap di
 > [`raspberry/README.md`](raspberry/README.md).
+
+> **STB Amlogic ber-Armbian (ophub)?** Cukup satu perintah:
+> `curl -fsSL https://raw.githubusercontent.com/nhs-den/antrianahass/main/stb/one-click.sh | sudo bash`
+> — pemasang, uji layar, dan perbaikan otomatis sampai gambar muncul.
+> Detail: [`stb/README.md`](stb/README.md).
 
 ```bash
 # 1. masuk ke perangkat (SSH)
@@ -419,7 +425,7 @@ Bisa juga menambahkan flag Chromium sendiri:
 ```bash
 sudo systemctl edit ahass-kiosk
 # [Service]
-# Environment=CHROMIUM_FLAGS=--disable-gpu
+# Environment="CHROMIUM_FLAGS=--disable-gpu"
 ```
 
 ---
@@ -452,6 +458,13 @@ antrianahass/
 │   ├── chromium-flags.conf   # flag hemat RAM 1 GB
 │   ├── units/                # ahass-panel, ahass-kiosk, ahass-restart
 │   └── README.md / dietpi-tweaks.md
+├── stb/                      # pemasang khusus STB Amlogic (Armbian/ophub)
+│   ├── one-click.sh          # curl | sudo bash
+│   ├── install.sh            # pasang + uji layar
+│   ├── screen-fix.sh         # eskalasi perbaikan layar (GPU/root/legacy)
+│   ├── smoke-test.sh         # diagnosa panel & layar
+│   ├── units/                # ahass-panel, ahass-kiosk, ahass-restart
+│   └── README.md
 ├── deploy/
 │   ├── install.sh / update.sh / migrate.sh / uninstall.sh
 │   ├── install-ulasan.sh     # layanan widget ulasan-google (port 3000)

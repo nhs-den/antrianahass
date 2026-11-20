@@ -21,7 +21,7 @@ SyslogIdentifier=ahass-kiosk
 Environment=AHASS_URL=http://127.0.0.1:8080/
 Environment=AHASS_PROFILE_DIR=/var/lib/antrianahass/chromium
 Environment=XDG_RUNTIME_DIR=/run/ahass-kiosk
-Environment=CHROMIUM_FLAGS=__CHROMIUM_FLAGS__
+Environment="CHROMIUM_FLAGS=__CHROMIUM_FLAGS__"
 RuntimeDirectory=ahass-kiosk
 RuntimeDirectoryMode=0755
 ExecStart=/usr/bin/xinit /opt/antrianahass/deploy/start-kiosk.sh -- :0 vt1 -nolisten tcp -nocursor
