@@ -184,19 +184,21 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data || !data.ok) return;
+        renderPanelAddr(data.ips, data.port);
+        renderDdmsMeta(data.ddms || {});
         var ddms = data.ddms || {};
         var now = Date.now();
         if (ddms.lastOkAt && now - ddms.lastOkAt < 5 * 60 * 1000) {
           if (!ddms.lastErrorAt || ddms.lastOkAt > ddms.lastErrorAt) {
-            setStatus('ok', 'DDMS terhubung');
+            setStatus('ok', 'Antrian Terhubung');
             return;
           }
         }
         if (ddms.lastErrorAt && (!ddms.lastOkAt || ddms.lastErrorAt > ddms.lastOkAt)) {
-          setStatus('err', 'DDMS terputus');
+          setStatus('err', 'Antrian Terputus');
           return;
         }
-        setStatus('', 'DDMS menunggu');
+        setStatus('', 'Antrian Menunggu');
       })
       .catch(function () { setStatus('warn', 'Server lokal offline'); });
   }
@@ -505,7 +507,7 @@
     if (!cfg.ddms.enabled) {
       overlay.hidden = false;
       frame.src = 'about:blank';
-      setStatus('warn', 'DDMS nonaktif');
+      setStatus('warn', 'Antrian nonaktif');
       return;
     }
     overlay.hidden = true;
@@ -531,15 +533,15 @@
     frame.addEventListener('load', function () {
       if (!state.cfg || !state.cfg.ddms.enabled) return;
       if (!/^about:/.test(frame.getAttribute('src') || '')) {
-        setStatus('ok', 'DDMS terhubung');
+        setStatus('ok', 'Antrian Terhubung');
         state.frameLoadedAt = Date.now();
       }
     });
     window.addEventListener('message', function (event) {
       var data = event.data;
       if (!data || data.type !== 'ahass-ddms-status') return;
-      if (data.ok) setStatus('ok', 'DDMS terhubung');
-      else setStatus('err', 'DDMS terputus');
+      if (data.ok) setStatus('ok', 'Antrian Terhubung');
+      else setStatus('err', 'Antrian Terputus');
     });
   }
 
@@ -573,6 +575,98 @@
    * Terapkan skala + geser panel (koreksi overscan TV).
    * Nilai diatur di admin: skala 50-100%, geser -200..200 piksel.
    */
+  /** Simpan daftar alamat LAN dari /health, lalu tampilkan di bawah status. */
+  function renderPanelAddr(ips, port) {
+    var el = $('panelAddr');
+    if (!el) return;
+    var list = Array.isArray(ips) ? ips.filter(Boolean) : [];
+    if (!list.length) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    var p = Number(port) || 8080;
+    // Di layar hanya IP-nya (port disembunyikan); URL lengkap ada di title.
+    el.textContent = list.join('  ·  ');
+    el.title = 'Alamat panel: ' + list.map(function (ip) { return 'http://' + ip + ':' + p + '/'; }).join('  ');
+    el.hidden = false;
+  }
+
+  /**
+   * Tampilkan penjelasan di atas layar DDMS bila isinya kosong/hitam, supaya
+   * tidak menebak-nebak: status proxy, ukuran iframe, dan saran tindakan.
+   */
+  function setStageFallback(text) {
+    var el = $('stageFallback');
+    if (el) el.textContent = text || '';
+  }
+
+  function showStageHint(judul, text) {
+    var ov = $('stageOverlay');
+    if (!ov) return;
+    if (!text) { ov.hidden = true; ov.innerHTML = ''; return; }
+    ov.innerHTML = '<div class="overlay-card"><strong></strong><span></span></div>';
+    ov.querySelector('strong').textContent = judul;
+    ov.querySelector('span').textContent = text;
+    ov.hidden = false;
+  }
+
+  /**
+   * Periksa apakah halaman DDMS benar-benar kosong. Bila kosong:
+   *  - muat ulang otomatis (maksimal 3x, jeda 20 s) karena DDMS kadang
+   *    mengirim halaman kosong pada permintaan pertama (302 -> halaman login),
+   *  - tampilkan keterangan di layar supaya tidak sekadar hitam.
+   * Aman: semua dibungkus try/catch dan tidak menyentuh overlay jika sudah terisi.
+   */
+  function diagnoseStage() {
+    try {
+      var ov = $('stageOverlay');
+      if (ov && ov.hidden === false) return;   // sudah ada pesan lain
+
+      var frame = $('ddmsFrame');
+      var box = $('stage');
+      var doc = null;
+      var blocked = false;
+      try { doc = frame && frame.contentDocument; } catch (_e) { blocked = true; }
+      var body = doc && doc.body;
+      var text = body ? String(body.textContent || '').replace(/\s+/g, '') : '';
+      var hasContent = !blocked && body && (body.children.length > 0 || text.length > 0);
+      if (hasContent) {
+        state.stageEmptyCount = 0;
+        showStageHint('', '');
+        setStageFallback('');
+        return;
+      }
+
+      var size = box ? (box.clientWidth + 'x' + box.clientHeight) : '?';
+      if (blocked) {
+        showStageHint('Layar DDMS kosong',
+          'Isi DDMS tidak bisa diperiksa (beda domain). Cek alamat DDMS di halaman admin.');
+        setStageFallback('Layar DDMS tidak dapat diperiksa. Cek alamat DDMS di halaman admin.');
+        return;
+      }
+
+      setStageFallback('Halaman DDMS belum mengirim isi — memuat ulang otomatis…');
+      state.stageEmptyCount = (state.stageEmptyCount || 0) + 1;
+      if (state.stageEmptyCount <= 3) {
+        showStageHint('Memuat ulang DDMS…',
+          'Halaman DDMS datang kosong (percobaan ' + state.stageEmptyCount +
+          ' dari 3). Panel mencoba memuat ulang otomatis.');
+        var target = (state.cfg.ddms && state.cfg.ddms.path) || '/ddms';
+        setTimeout(function () {
+          try { frame.src = 'about:blank'; } catch (_e) { /* diabaikan */ }
+          setTimeout(function () { try { frame.src = target; } catch (_e) { /* diabaikan */ } }, 800);
+        }, 4000);
+        return;
+      }
+
+      showStageHint('Layar DDMS kosong',
+        'Halaman DDMS tidak mengirim isi. Kotak layar: ' + size +
+        '. Jalankan: curl -sk -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/ddms');
+      setStageFallback('Halaman DDMS tidak mengirim isi. Periksa server DDMS, lalu tunggu panel memuat ulang.');
+    } catch (_e) { /* jangan pernah mengganggu panel */ }
+  }
+
   function applyScreenFit(display) {
     var d = display || {};
     var scale = Number(d.scalePercent);
@@ -580,10 +674,80 @@
     scale = Math.min(100, Math.max(50, scale)) / 100;
     var x = Number(d.offsetX) || 0;
     var y = Number(d.offsetY) || 0;
+    var h = Number(d.boxHeightPercent);
+    if (!isFinite(h) || h <= 0) h = 100;
+    h = Math.min(100, Math.max(40, h));
     var root = document.documentElement.style;
     root.setProperty('--screen-scale', String(scale));
     root.setProperty('--screen-x', x + 'px');
     root.setProperty('--screen-y', y + 'px');
+    root.setProperty('--panel-h', h + '%');
+    root.setProperty('--panel-anchor', d.boxAnchor === 'bottom' ? 'end' : 'start');
+
+    // Layar DDMS: skala & geser sendiri (memotong header/menu DDMS).
+    var ss = Number(d.stageScalePercent);
+    if (!isFinite(ss) || ss <= 0) ss = 100;
+    ss = Math.min(150, Math.max(50, ss)) / 100;
+    root.setProperty('--stage-scale', String(ss));
+    root.setProperty('--stage-x', (Number(d.stageOffsetX) || 0) + 'px');
+    root.setProperty('--stage-y', (Number(d.stageOffsetY) || 0) + 'px');
+    fitStage();
+  }
+
+  /**
+   * Muat halaman DDMS ke dalam kotaknya secara otomatis.
+   *
+   * Aman: seluruh proses dibungkus try/catch dan HANYA mengecilkan (0.6–1).
+   * Bila pengukuran ragu-ragu (cross-origin, iframe belum siap), skala
+   * dikembalikan ke 1 supaya DDMS tidak pernah menghilang / blank.
+   */
+  function fitStage() {
+    var root = document.documentElement.style;
+    try {
+      var box = $('stage');
+      var frame = $('ddmsFrame');
+      if (!box || !frame) { root.setProperty('--stage-fit', '1'); return; }
+
+      var bw = box.clientWidth || 0;
+      var bh = box.clientHeight || 0;
+      var iw = 0;
+      var ih = 0;
+      try {
+        var doc = frame.contentDocument;
+        if (doc && doc.documentElement) {
+          iw = doc.documentElement.scrollWidth || doc.body.scrollWidth || 0;
+          ih = doc.documentElement.scrollHeight || doc.body.scrollHeight || 0;
+        }
+      } catch (_err) { iw = 0; ih = 0; }
+
+      // Tanpa ukuran yang bisa dipercaya -> jangan menyusutkan apa pun.
+      if (!bw || !bh || !iw || !ih) { root.setProperty('--stage-fit', '1'); return; }
+
+      var fit = Math.min(1, Math.min(bw / iw, bh / ih));
+      if (!isFinite(fit) || fit <= 0.2) fit = 1;
+      // 0.6 = batas aman supaya teks tidak menjadi tidak terbaca.
+      fit = Math.max(0.6, Math.min(1, fit));
+      root.setProperty('--stage-fit', String(Math.round(fit * 1000) / 1000));
+    } catch (_err) {
+      root.setProperty('--stage-fit', '1');
+    }
+  }
+
+  function watchStage() {
+    try {
+      var frame = $('ddmsFrame');
+      if (frame && frame.addEventListener) {
+        frame.addEventListener('load', function () {
+          fitStage();
+          setTimeout(fitStage, 800);         // DDMS kadang menggambar setelah load
+          setTimeout(diagnoseStage, 3000);   // beri waktu DDMS menjalankan JS
+        });
+      }
+      if (window.addEventListener) {
+        window.addEventListener('resize', fitStage);
+        window.addEventListener('orientationchange', fitStage);
+      }
+    } catch (_err) { /* jangan pernah menghentikan inisialisasi panel */ }
   }
 
   function loadConfig() {
@@ -610,6 +774,17 @@
       var data;
       try { data = JSON.parse(event.data); } catch (_e) { return; }
       if (data.type === 'config') loadConfig();
+
+      // Pratinjau langsung dari admin: ubah tampilan sekarang juga, tanpa
+      // menyimpan. Saat admin berhenti (display null) kembali ke config tersimpan.
+      if (data.type === 'display-preview') {
+        if (data.display) {
+          applyPreview(data.display);
+        } else if (state.cfg) {
+          applyConfig(state.cfg);
+          setStatus('warn', 'Pratinjau dihentikan');
+        }
+      }
     };
     source.onerror = function () {
       source.close();
@@ -623,6 +798,7 @@
     tickClock();
     setInterval(tickClock, 1000);
     setupFrameEvents();
+    watchStage();
     loadConfig().then(function () {
       if (!state.cfg) return;
       checkHealth();

@@ -18,7 +18,9 @@ const statics = require('./lib/static');
 const ddms = require('./lib/ddms');
 const proxy = require('./lib/proxy');
 const ulasanPage = require('./lib/ulasan-page');
+const ulasanBuiltin = require('./lib/ulasan-builtin');
 const screen = require('./lib/screen');
+const ulasanService = require('./lib/ulasan-service');
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -29,6 +31,43 @@ const STARTED_AT = Date.now();
  * ------------------------------------------------------------------ */
 
 const sseClients = new Set();
+
+/**
+ * Alamat IPv4 yang bisa dipakai perangkat lain (STB/PC) untuk membuka panel.
+ * Loopback & link-local dibuang; alamat dari antarmuka yang sedang terhubung
+ * ke jaringan diurutkan lebih dulu supaya yang tampil adalah yang berguna.
+ */
+function lanAddresses() {
+  const out = [];
+  try {
+    const ifaces = os.networkInterfaces();
+    for (const [name, list] of Object.entries(ifaces)) {
+      for (const addr of list || []) {
+        if (addr.family !== 'IPv4' && addr.family !== 4) continue;
+        if (addr.internal) continue;
+        if (String(addr.address).startsWith('169.254.')) continue;
+        out.push({ iface: name, address: addr.address });
+      }
+    }
+  } catch (_err) { /* abaikan */ }
+  return out;
+}
+
+/**
+ * Alamat tampilan yang dipakai STB (untuk baris status di layar).
+ *
+ * Di Docker, alamat yang terlihat oleh STB adalah IP HOST, bukan IP container
+ * (biasanya 172.17.x.x yang tidak bisa dihubungi). Karena itu bisa dipaksa
+ * lewat AHASS_DISPLAY_IP (boleh lebih dari satu, dipisah koma).
+ */
+function displayAddresses() {
+  const forced = String(process.env.AHASS_DISPLAY_IP || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (forced.length) return forced;
+  return lanAddresses().map((a) => a.address);
+}
 
 function broadcast(event) {
   const payload = 'data: ' + JSON.stringify(event) + '\n\n';
@@ -89,6 +128,11 @@ function buildPatch(body) {
     const d = src.display;
     patch.display = {
       leftPercent: clampInt(d.leftPercent, 20, 60, 30),
+      boxHeightPercent: clampInt(d.boxHeightPercent, 40, 100, 100),
+      boxAnchor: d.boxAnchor === 'bottom' ? 'bottom' : 'top',
+      stageScalePercent: clampInt(d.stageScalePercent, 50, 150, 100),
+      stageOffsetX: clampInt(d.stageOffsetX, -400, 400, 0),
+      stageOffsetY: clampInt(d.stageOffsetY, -400, 400, 0),
       scalePercent: clampInt(d.scalePercent, 50, 100, 100),
       offsetX: clampInt(d.offsetX, -200, 200, 0),
       offsetY: clampInt(d.offsetY, -200, 200, 0),
@@ -145,13 +189,18 @@ function buildPatch(body) {
       cacheMinutes: clampInt(r.cacheMinutes, 2, 1440, 60),
       showAvatar: r.showAvatar !== false,
       refreshMinutes: clampInt(r.refreshMinutes, 0, 1440, 30),
+      // URL JSON untuk widget ulasan bawaan (opsional)
+      jsonUrl: r.jsonUrl === undefined ? undefined : (util.sanitizeUrl(r.jsonUrl) || ''),
       script: {
         // snippet disimpan apa adanya (maks 8 KB), sisanya parameter pembangkit URL
         code: String((r.script && r.script.code) || '').trim().slice(0, 8192),
         host: cleanText(r.script && r.script.host, 120).replace(/^https?:\/\//i, '').replace(/\/+$/, ''),
         port: clampInt(r.script && r.script.port, 1, 65535, 3000),
         path: cleanText(r.script && r.script.path, 200) || '/loader.js',
-        query: cleanText(r.script && r.script.query, 200)
+        query: cleanText(r.script && r.script.query, 200),
+        // Pembaruan 1.3.0: panel ikut menjalankan layanan ulasan (port 3000).
+        manage: !(r.script && r.script.manage === false),
+        dir: cleanText(r.script && r.script.dir, 400)
       }
     };
     if (typeof r.apiKey === 'string' && r.apiKey.length) {
@@ -204,7 +253,15 @@ async function handleApi(req, res, url) {
       uptimeSeconds: Math.round((Date.now() - STARTED_AT) / 1000),
       memoryMB: Math.round(process.memoryUsage().rss / 1048576),
       ddms: proxy.proxyStatus(),
-      authed: auth.isAuthed(req)
+      ips: displayAddresses(),
+      port: PORT,
+      // jumlah layar kiosk yang tersambung lewat SSE (untuk memastikan
+      // tombol admin benar-benar sampai ke layar)
+      screens: sseClients.size,
+      authed: auth.isAuthed(req),
+      // penanda lingkungan: 'docker' bila berjalan di dalam container
+      runtime: process.env.AHASS_RUNTIME || (fs.existsSync('/.dockerenv') ? 'docker' : 'host'),
+      dataDir: config.DATA_DIR
     });
     return;
   }
@@ -357,6 +414,106 @@ async function handleApi(req, res, url) {
   if (p === '/__ahass/api/admin/reviews/clear-cache' && method === 'POST') {
     reviews.clearCache();
     util.sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  // Layanan widget ulasan-google: status / jalankan / hentikan / pasang autostart.
+  if (p === '/__ahass/api/admin/ulasan/status' && method === 'GET') {
+    const st = await ulasanService.status(config.get());
+    st.builtin = ulasanBuiltin.status();
+    st.builtinSource = String(config.get().reviews.jsonUrl || '') ? 'json' : 'auto';
+    util.sendJson(res, 200, { ok: true, status: st });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/start' && method === 'POST') {
+    const payload = await util.readJson(req, 4 * 1024).catch(() => null);
+    if (payload && Object.prototype.hasOwnProperty.call(payload, 'dir')) {
+      // Folder yang dipilih admin disimpan supaya dipakai lagi setelah restart.
+      const dir = cleanText(payload.dir, 400);
+      config.update({ reviews: { script: { dir: dir } } });
+    }
+    const out = await ulasanService.start(config.get());
+    const st = await ulasanService.status(config.get());
+    if (!st.managedProcess && !st.http.up) {
+      // Tidak ada aplikasi terpisah -> pakai widget bawaan panel.
+      ulasanBuiltin.start(config.get);
+    }
+    st.builtin = ulasanBuiltin.status();
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: st });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/stop' && method === 'POST') {
+    const out = ulasanService.stop();
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/builtin' && method === 'POST') {
+    const body = await util.readJson(req, 4 * 1024).catch(() => null);
+    const url = util.sanitizeUrl(body && body.jsonUrl);
+    config.update({ reviews: { jsonUrl: url || '' } });
+    reviews.clearCache();
+    ulasanBuiltin.stop();
+    const st = ulasanService.status ? await ulasanService.status(config.get()) : {};
+    if (body && body.enable) ulasanBuiltin.start(config.get);
+    util.sendJson(res, 200, {
+      ok: true,
+      message: url
+        ? 'URL JSON disimpan. Widget bawaan akan membacanya (port ' + (st.port || 3000) + ').'
+        : 'URL JSON dikosongkan.',
+      builtin: ulasanBuiltin.status()
+    });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/install' && method === 'POST') {
+    const out = await ulasanService.install(config.get());
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
+    return;
+  }
+
+  // Pratinjau langsung dari halaman admin ke layar kiosk (realtime).
+  // Tidak disimpan ke config.json - hanya disiarkan lewat SSE beberapa saat
+  // agar pengguna bisa menggeser/menskalakan sambil melihat hasilnya.
+  if (p === '/__ahass/api/admin/display/preview' && method === 'POST') {
+    const body = await util.readJson(req, 4 * 1024);
+    const d = (body && body.display) || body || {};
+    const cur = config.get().display;
+    // Nilai yang tidak masuk akal (0/kosong) harus kembali ke setelan tersimpan,
+    // bukan dijepit ke batas minimum - itu akan mengubah layar tanpa diminta.
+    const positive = (value, min, max, fallback) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return fallback;
+      return Math.max(min, Math.min(max, Math.round(n)));
+    };
+    const payload = {
+      leftPercent: positive(d.leftPercent, 20, 60, cur.leftPercent || 30),
+      boxHeightPercent: positive(d.boxHeightPercent, 40, 100, cur.boxHeightPercent || 100),
+      boxAnchor: d.boxAnchor === 'bottom' || d.boxAnchor === 'top'
+        ? d.boxAnchor
+        : (cur.boxAnchor || 'top'),
+      scalePercent: positive(d.scalePercent, 50, 100, 100),
+      stageScalePercent: positive(d.stageScalePercent, 50, 150, cur.stageScalePercent || 100),
+      stageOffsetX: clampInt(d.stageOffsetX, -400, 400, cur.stageOffsetX || 0),
+      stageOffsetY: clampInt(d.stageOffsetY, -400, 400, cur.stageOffsetY || 0),
+      offsetX: clampInt(d.offsetX, -200, 200, 0),
+      offsetY: clampInt(d.offsetY, -200, 200, 0),
+      live: true
+    };
+    broadcast({ type: 'display-preview', display: payload, at: Date.now() });
+    // clients = jumlah layar kiosk yang sedang mendengarkan. Bila 0, tombol
+    // memang mengirim tapi tidak ada layar yang menerima (kiosk perlu restart).
+    util.sendJson(res, 200, { ok: true, display: payload, clients: sseClients.size });
+    return;
+  }
+
+  // Kembalikan layar ke nilai yang tersimpan (dipakai saat slider dilepas,
+  // panel admin ditutup, atau tombol Batal ditekan).
+  if (p === '/__ahass/api/admin/display/preview' && method === 'DELETE') {
+    broadcast({ type: 'display-preview', display: null, live: false, at: Date.now() });
+    util.sendJson(res, 200, { ok: true, clients: sseClients.size });
     return;
   }
 
@@ -542,10 +699,32 @@ server.listen(PORT, HOST, () => {
       }
     });
   });
+
+  // Widget ulasan otomatis menyala bersama panel (port 3000).
+  // Urutan: kalau ada aplikasi ulasan-google terpisah -> pakai itu; kalau tidak,
+  // widget bawaan panel yang melayani /loader.js + /reviews.json.
+  // Dijalankan setelah server siap supaya kegagalan widget tidak menghalangi panel.
+  const rs = (config.get().reviews && config.get().reviews.script) || {};
+  if (rs.manage !== false) {
+    setTimeout(() => {
+      ulasanService.start(config.get())
+        .then(async (out) => {
+          util.log('Ulasan: ' + out.message);
+          const st = await ulasanService.status(config.get());
+          if (!st.http.up) {
+            const builtin = ulasanBuiltin.start(config.get);
+            util.log('Ulasan bawaan: ' + builtin.message);
+          }
+        })
+        .catch((err) => util.log('Ulasan: gagal dijalankan - ' + err.message));
+    }, 2500).unref();
+  }
 });
 
 function shutdown(signal) {
   util.log('Menerima ' + signal + ', mematikan server…');
+  try { ulasanService.stop(); } catch (_e) { /* diabaikan */ }
+  try { ulasanBuiltin.stop(); } catch (_e) { /* diabaikan */ }
   for (const res of sseClients) {
     try { res.end(); } catch (_e) { /* diabaikan */ }
   }

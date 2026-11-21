@@ -331,8 +331,12 @@ Hindari swapfile di microSD; pakai zram (bawaan DietPi).
 
 ## 8. Widget ulasan Google (kotak 3)
 
-Widget ulasan adalah aplikasi terpisah di port **3000**. Di Pi 3 B+ aplikasi
-Node tambahan itu ikut memakan 60–120 MB RAM, jadi pertimbangkan dulu:
+**Sejak 1.3.1 tidak perlu aplikasi tambahan.** Panel menyediakan sendiri
+`/loader.js` + `/reviews.json` di port **3000** (widget bawaan, ~2 MB RAM).
+Cukup isi **URL JSON ulasan** (atau API key + Place ID) di admin → Ulasan Google.
+
+Aplikasi `ulasan-google` terpisah tetap didukung bila Anda sudah punya: ia
+memakan 60–120 MB RAM di Pi 3 B+, jadi pertimbangkan dulu:
 
 ```bash
 # cek apakah widget sudah berjalan
@@ -344,11 +348,18 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/loader.js
   `nhs-den/ulasan-google`; pemasangnya ada di repo ini:
 
 ```bash
-sudo bash /opt/antrianahass/deploy/install-ulasan.sh --dir ~/ulasan-google-main
+# cara ringkas: panel + widget ulasan menyala bersamaan saat boot
+sudo bash /opt/antrianahass/deploy/enable-ulasan-autostart.sh --dir ~/ulasan-google-main
 ```
 
-Kalau RAM terasa sesak, kosongkan kotak 3 (mode ulasan **off**) — panel tetap
-berjalan normal tanpa widget.
+Atau tanpa terminal sama sekali: admin → **Ulasan Google → Layanan ulasan**,
+isi folder aplikasinya, centang **Jalankan otomatis bersama panel**, lalu klik
+**Pasang autostart (systemd)** (butuh panel berjalan sebagai root; kalau tidak,
+pakai perintah `sudo` di atas sekali saja).
+
+Di Pi 3 B+ widget ulasan memakai tambahan 60–120 MB RAM. Kalau RAM sesak,
+hentikan dari admin (**Hentikan**) atau kosongkan kotak 3 (mode **off**) —
+panel tetap berjalan normal tanpa widget.
 
 ---
 

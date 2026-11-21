@@ -27,6 +27,13 @@
     toastTimer = setTimeout(function () { el.hidden = true; }, 4200);
   }
 
+  function clampNum(value, min, max, fallback) {
+    var n = Number(value);
+    if (!isFinite(n)) return fallback;
+    n = Math.round(n);
+    return Math.max(min, Math.min(max, n));
+  }
+
   function escapeHtml(text) {
     return String(text == null ? '' : text)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -55,6 +62,30 @@
         return data;
       });
     });
+  }
+
+  /**
+   * Jalankan setup satu per satu: kalau satu bagian gagal (mis. karena versi
+   * HTML & JS tidak sinkron setelah update), tombol lain tetap hidup.
+   * Sebelumnya satu error bisa membuat SEMUA tombol pas layar mati.
+   */
+  function safeSetup(name, fn) {
+    try {
+      fn();
+    } catch (err) {
+      if (window.console) console.error('[admin] gagal menyiapkan ' + name + ':', err);
+      try { toast('Bagian "' + name + '" gagal dimuat: ' + err.message, 'bad'); } catch (_e) { /* diabaikan */ }
+    }
+  }
+
+  /**
+   * Pasang event listener dengan aman. Bila elemennya tidak ada (mis. HTML
+   * lama dari cache browser), lewati saja - tombol lain tetap bekerja.
+   */
+  function on(target, event, handler) {
+    var el = typeof target === 'string' ? $(target) : target;
+    if (el && el.addEventListener) el.addEventListener(event, handler);
+    return el;
   }
 
   function setMsg(el, text, ok) {
@@ -146,15 +177,20 @@
     $('rScriptPath').value = rs.path || '/loader.js';
     $('rScriptQuery').value = rs.query || 'kiosk=1';
     $('rScriptHost').value = rs.host || '';
+    $('rJsonUrl').value = cfg.reviews.jsonUrl || '';
+    $('uSvcDir').value = rs.dir || '';
+    $('uSvcManage').checked = rs.manage !== false;
     $('rAvatar').checked = !!cfg.reviews.showAvatar;
+    $('dLeft').value = cfg.display.leftPercent || 30;
+    $('leftValue').textContent = (cfg.display.leftPercent || 30) + '%';
+    $('dScale').value = cfg.display.scalePercent || 100;
+    $('scaleValue').textContent = (cfg.display.scalePercent || 100) + '%';
+
     updateModeFields();
 
     // Display
     $('dLeft').value = cfg.display.leftPercent || 30;
     $('leftValue').textContent = ($('dLeft').value) + '%';
-    var fit = readFit(cfg.display);
-    state.fit = fit;
-    syncFitInputs();
     $('dRotate').value = cfg.display.rotateSeconds || 12;
     $('dVideo').value = cfg.display.videoSeconds || 30;
     setSelect('dTheme', cfg.display.theme || 'dark');
@@ -200,132 +236,39 @@
     });
   }
 
-  /* ------------------------------------------------- pas layar (overscan) */
-
-  function clampNum(value, min, max, fallback) {
-    var n = Number(value);
-    if (!isFinite(n)) return fallback;
-    n = Math.round(n);
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function readFit(display) {
-    var d = display || {};
-    return {
-      scalePercent: clampNum(d.scalePercent, 50, 100, 100),
-      offsetX: clampNum(d.offsetX, -200, 200, 0),
-      offsetY: clampNum(d.offsetY, -200, 200, 0)
-    };
-  }
-
-  function syncFitInputs() {
-    var fit = state.fit || readFit(null);
-    $('dScale').value = fit.scalePercent;
-    $('scaleValue').textContent = fit.scalePercent + '%';
-    $('offsetXValue').textContent = fit.offsetX;
-    $('offsetYValue').textContent = fit.offsetY;
-  }
-
-  /**
-   * Pratinjau langsung di tab ini (tanpa server): atur variabel CSS yang
-   * dipakai .shell di public/style.css.
-   */
-  function previewFit() {
-    var fit = state.fit;
+  /* ------------------------------------------------------------ skala layar */
+  /** Skala + lebar panel: langsung terlihat di halaman ini (tanpa simpan). */
+  function rebuild() {
     var root = document.documentElement.style;
-    root.setProperty('--screen-scale', String(fit.scalePercent / 100));
-    root.setProperty('--screen-x', fit.offsetX + 'px');
-    root.setProperty('--screen-y', fit.offsetY + 'px');
+    var left = sliderValue('dLeft', 20, 60, 30);
+    var scale = sliderValue('dScale', 50, 100, 100);
+    root.setProperty('--left', left + '%');
+    root.setProperty('--screen-scale', String(scale / 100));
+    var lv = $('leftValue'); if (lv) lv.textContent = left + '%';
+    var sv = $('scaleValue'); if (sv) sv.textContent = scale + '%';
   }
 
-  function moveFit(dx, dy) {
-    var fit = state.fit || readFit(null);
-    if (dx === 0 && dy === 0) {
-      state.fit = readFit(null);
-      state.fit.scalePercent = fit.scalePercent;
-    } else {
-      state.fit = {
-        scalePercent: fit.scalePercent,
-        offsetX: clampNum(fit.offsetX + dx, -200, 200, 0),
-        offsetY: clampNum(fit.offsetY + dy, -200, 200, 0)
-      };
-    }
-    syncFitInputs();
-    previewFit();
+  /** Nilai slider yang aman bila elemennya tidak ada. */
+  function sliderValue(id, min, max, fallback) {
+    var el = $(id);
+    return clampNum(el ? el.value : fallback, min, max, fallback);
   }
 
-  /* ------------------------------------------------ resolusi layar kiosk */
-
-  function loadScreenInfo() {
-    var mode = $('resMode');
-    var current = $('resCurrent');
-    var hint = $('resHint');
-    if (!mode || !current) return;
-
-    api('admin/system/screen').then(function (info) {
-      state.screen = info;
-      if (!info || !info.supported) {
-        current.value = 'tidak didukung di perangkat ini';
-        hint.textContent = 'Ubah resolusi manual lewat dietpi-config (Display Options → Display Resolution).';
-        $('resApplyBtn').disabled = true;
-        return;
-      }
-      current.value = (info.current || 'tidak diketahui') +
-        (info.source ? '  (' + info.source + ')' : '');
-      $('resOverscan').checked = !!info.overscanDisabled;
-
-      var matches = (info.modes || []).filter(function (m) { return m.mode === info.hdmiMode; });
-      var selected = matches.length ? matches[0].size : '';
-      if (selected) setSelect('resMode', selected);
-      hint.textContent = info.hdmiMode
-        ? 'Terbaca dari /boot/firmware/config.txt: mode ' + info.hdmiMode + '.'
-        : 'Belum ada hdmi_mode khusus; DietPi memakai mode otomatis (EDID TV).';
-    }).catch(function (err) {
-      current.value = 'gagal dibaca';
-      hint.textContent = 'Tidak bisa membaca setelan layar: ' + err.message;
-    });
-  }
-
-  function applyResolution() {
-    var size = getSelect('resMode');
-    var overscan = $('resOverscan').checked;
-    if (!size && !overscan) {
-      toast('Pilih resolusi dulu (atau centang matikan overscan).', 'bad');
-      return;
-    }
-
-    var body = { overscan: overscan };
-    if (size) {
-      var parts = String(size).split('x');
-      body.width = Number(parts[0]);
-      body.height = Number(parts[1]);
-    }
-
-    var label = size || 'overscan';
-    if (!window.confirm('Terapkan ' + label + ' lalu perangkat akan reboot. Layar akan mati beberapa saat. Lanjut?')) {
-      return;
-    }
-
-    var btn = $('resApplyBtn');
-    btn.disabled = true;
-    api('admin/system/resolution', { method: 'POST', body: body })
-      .then(function (res) {
-        toast(res.message || 'Resolusi diterapkan. Perangkat reboot…', 'ok');
-        $('resHint').textContent = 'Menunggu reboot… layar akan menyala kembali otomatis.';
-      })
-      .catch(function (err) {
-        btn.disabled = false;
-        toast('Gagal menerapkan resolusi: ' + err.message, 'bad');
-      });
+  /** Lebar panel kiri; jatuh ke nilai tersimpan bila slider belum terisi. */
+  function leftPercentValue() {
+    var n = sliderValue('dLeft', 20, 60, 0);
+    if (n > 0) return n;
+    return (state.cfg && state.cfg.display && state.cfg.display.leftPercent) || 30;
   }
 
   function collect() {
     return {
       display: {
-        leftPercent: Number($('dLeft').value),
-        scalePercent: state.fit ? state.fit.scalePercent : 100,
-        offsetX: state.fit ? state.fit.offsetX : 0,
-        offsetY: state.fit ? state.fit.offsetY : 0,
+        leftPercent: clampNum(leftPercentValue(), 20, 60, 30),
+        scalePercent: sliderValue('dScale', 50, 100, 100),
+        // offset/tinggi/skala DDMS kini otomatis; nilai lama dipertahankan.
+        offsetX: (state.cfg && state.cfg.display && state.cfg.display.offsetX) || 0,
+        offsetY: (state.cfg && state.cfg.display && state.cfg.display.offsetY) || 0,
         clock24: $('dClock24').checked,
         showSeconds: $('dSeconds').checked,
         theme: getSelect('dTheme') || 'dark',
@@ -362,13 +305,16 @@
         maxReviews: Number($('rMax').value) || 10,
         cacheMinutes: Number($('rCache').value) || 60,
         refreshMinutes: Number($('rRefresh').value) || 0,
+        jsonUrl: $('rJsonUrl').value.trim(),
         showAvatar: $('rAvatar').checked,
         script: {
           code: $('rScriptCode').value,
           host: $('rScriptHost').value.trim(),
           port: Number($('rScriptPort').value) || 3000,
           path: $('rScriptPath').value.trim() || '/loader.js',
-          query: $('rScriptQuery').value.trim()
+          query: $('rScriptQuery').value.trim(),
+          manage: $('uSvcManage').checked,
+          dir: $('uSvcDir').value.trim()
         }
       },
       gallery: {
@@ -495,7 +441,7 @@
   /* ---------------------------------------------------------------- logo */
 
   function setupLogo() {
-    $('logoFile').addEventListener('change', function (event) {
+    on('logoFile', 'change', function (event) {
       var file = event.target.files && event.target.files[0];
       if (!file) return;
       if (file.size > 5 * 1024 * 1024) {
@@ -516,7 +462,7 @@
       reader.readAsDataURL(file);
     });
 
-    $('logoResetBtn').addEventListener('click', function () {
+    on('logoResetBtn', 'click', function () {
       api('admin/logo', { method: 'POST', body: { reset: true } })
         .then(function (res) {
           $('lUrl').value = res.url;
@@ -526,7 +472,7 @@
         .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); });
     });
 
-    $('lUrl').addEventListener('input', function () {
+    on('lUrl', 'input', function () {
       $('logoPreview').src = $('lUrl').value || '/assets/logo.png';
     });
   }
@@ -581,7 +527,7 @@
   }
 
   function setupTests() {
-    $('pingBtn').addEventListener('click', function () {
+    on('pingBtn', 'click', function () {
       var btn = this;
       btn.disabled = true;
       api('admin/ddms/ping', { method: 'POST' })
@@ -597,7 +543,7 @@
         .finally(function () { btn.disabled = false; });
     });
 
-    $('loginTestBtn').addEventListener('click', function () {
+    on('loginTestBtn', 'click', function () {
       var btn = this;
       btn.disabled = true;
       showResult($('testResult'), 'Mencoba login otomatis…', true);
@@ -625,7 +571,7 @@
         .finally(function () { btn.disabled = false; });
     });
 
-    $('reviewTestBtn').addEventListener('click', function () {
+    on('reviewTestBtn', 'click', function () {
       var btn = this;
       btn.disabled = true;
       showResult($('reviewResult'), 'Mengambil ulasan…', true);
@@ -657,21 +603,123 @@
         .finally(function () { btn.disabled = false; });
     });
 
-    $('scriptPreviewBtn').addEventListener('click', function () {
+    on('scriptPreviewBtn', 'click', function () {
       window.open('/__ahass/ulasan', '_blank', 'noopener');
     });
 
-    $('reviewCacheBtn').addEventListener('click', function () {
+    on('reviewCacheBtn', 'click', function () {
       api('admin/reviews/clear-cache', { method: 'POST' })
         .then(function () { toast('Cache ulasan dikosongkan.', 'ok'); })
         .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); });
     });
   }
 
+  /* --------------------------------------------------- status koneksi layar */
+
+  /** Apakah layar kiosk tersambung (menerima perubahan tanpa restart)? */
+  function setScreenLink(clients) {
+    var el = $('screenLinkState');
+    if (!el) return;
+    var n = Number(clients);
+    if (!isFinite(n)) return;
+    if (n > 0) {
+      el.textContent = 'terhubung (' + n + ')';
+      el.style.color = '#86efac';
+    } else {
+      el.textContent = 'tidak terhubung — jalankan: sudo systemctl restart ahass-kiosk';
+      el.style.color = '#fda4af';
+    }
+  }
+
+  function refreshScreenLink() {
+    return api('health')
+      .then(function (res) { setScreenLink(res.screens); })
+      .catch(function () { /* diamkan */ });
+  }
+
+  /* ------------------------------------------- layanan ulasan-google (3000) */
+
+  function refreshUlasanStatus() {
+    return api('admin/ulasan/status')
+      .then(function (res) { renderUlasanStatus(res.status); })
+      .catch(function (err) {
+        if ($('uSvcState')) $('uSvcState').textContent = 'tidak bisa memeriksa';
+        if ($('uSvcDetail')) $('uSvcDetail').textContent = err.message;
+      });
+  }
+
+  function renderUlasanStatus(st) {
+    if (!st) return;
+    var dot = $('uSvcDot');
+    var state = st.running ? 'Berjalan' : 'Berhenti';
+    if (st.http && st.http.up) state += ' — port ' + st.port + ' menjawab';
+    $('uSvcState').textContent = state;
+    dot.className = 'dot ' + (st.running ? 'ok' : 'bad');
+    $('uSvcPort').textContent = st.port;
+
+    var bits = [];
+    bits.push(st.dir ? 'folder: ' + st.dir : 'folder belum ditemukan');
+    if (st.systemd && st.systemd.installed) {
+      bits.push('autostart: ' + (st.systemd.active ? 'aktif' : 'terpasang, belum aktif'));
+    } else {
+      bits.push('autostart: belum dipasang');
+    }
+    if (st.managedProcess) bits.push('dijalankan oleh panel');
+    if (st.builtin && st.builtin.active) {
+      bits.push('widget bawaan aktif di port ' + st.builtin.port + (st.builtinSource === 'json' ? ' (URL JSON)' : ''));
+    } else if (st.builtin && st.builtin.error) {
+      bits.push('widget bawaan: ' + st.builtin.error);
+    }
+    if (st.error) bits.push(st.error);
+    $('uSvcDetail').textContent = bits.join(' · ');
+    if (!$('uSvcDir').value && st.dir) $('uSvcDir').placeholder = st.dir;
+    $('uSvcStop').disabled = !st.managedProcess;
+  }
+
+  function ulasanAction(action, button) {
+    var label = button ? button.textContent : '';
+    if (button) { button.disabled = true; button.textContent = 'memproses…'; }
+    var opts = { method: 'POST' };
+    if (action === 'start') opts.body = JSON.stringify({ dir: $('uSvcDir').value.trim() });
+    return api('admin/ulasan/' + action, opts)
+      .then(function (res) {
+        if (res.status) renderUlasanStatus(res.status);
+        toast(res.message || (res.ok ? 'Selesai.' : 'Gagal.'), res.ok ? 'ok' : 'bad');
+      })
+      .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); })
+      .finally(function () {
+        if (button) { button.disabled = false; button.textContent = label; }
+      });
+  }
+
+  function setupUlasanService() {
+    on('uSvcStart', 'click', function () { ulasanAction('start', this); });
+    on('uSvcStop', 'click', function () { ulasanAction('stop', this); });
+    on('uSvcInstall', 'click', function () { ulasanAction('install', this); });
+    on('uSvcRefresh', 'click', function () { refreshUlasanStatus(); });
+    on('uSvcTest', 'click', function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'mengambil…';
+      api('admin/reviews/test', { method: 'POST' })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.error || 'Gagal');
+          var d = res.data || {};
+          var n = (d.items || []).length;
+          var who = (d.items && d.items[0] && d.items[0].author) || '-';
+          toast('Ulasan terbaca: ' + n + ' item' + (d.rating ? ', rating ' + d.rating : '') +
+            (n ? ' (contoh: ' + who + ')' : ''), 'ok');
+        })
+        .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); })
+        .finally(function () { btn.disabled = false; btn.textContent = 'Uji ambil ulasan sekarang'; });
+    });
+    on('rScriptPort', 'change', function () { $('uSvcPort').textContent = this.value || 3000; });
+  }
+
   /* ------------------------------------------------------------ password */
 
   function setupPassword() {
-    $('passwordBtn').addEventListener('click', function () {
+    on('passwordBtn', 'click', function () {
       var current = $('secCurrent').value;
       var next = $('secNext').value;
       var confirm = $('secConfirm').value;
@@ -694,51 +742,37 @@
   /* ----------------------------------------------------------------- init */
 
   function bindStaticEvents() {
-    $('saveBtn').addEventListener('click', function () { save(false); });
-    $('logoutBtn').addEventListener('click', function () {
+    on('saveBtn', 'click', function () { save(false); });
+    on('logoutBtn', 'click', function () {
       api('admin/logout', { method: 'POST' }).then(showLogin).catch(showLogin);
     });
-    $('rMode').addEventListener('change', function () {
+    on('rMode', 'change', function () {
       state.reviewMode = $('rMode').value || getSelect('rMode');
       updateModeFields();
     });
-    $('dLeft').addEventListener('input', function () {
-      $('leftValue').textContent = this.value + '%';
+    on('dLeft', 'input', function () {
+      var label = $('leftValue');
+      if (label) label.textContent = this.value + '%';
+      rebuild();
     });
-
-    // Pas layar: skala + tombol geser
-    $('dScale').addEventListener('input', function () {
-      state.fit = state.fit || readFit(null);
-      state.fit.scalePercent = clampNum(this.value, 50, 100, 100);
-      syncFitInputs();
-      previewFit();
+    on('dLeft', 'change', rebuild);
+    on('dScale', 'input', function () {
+      var label = $('scaleValue');
+      if (label) label.textContent = this.value + '%';
+      rebuild();
     });
-    $('fitSaveBtn').addEventListener('click', function () { save(); });
+    on('dScale', 'change', rebuild);
 
-    Array.prototype.forEach.call(document.querySelectorAll('[data-move]'), function (btn) {
-      btn.addEventListener('click', function () {
-        switch (btn.getAttribute('data-move')) {
-          case 'up': moveFit(0, -4); break;
-          case 'down': moveFit(0, 4); break;
-          case 'left': moveFit(-4, 0); break;
-          case 'right': moveFit(4, 0); break;
-          default: moveFit(0, 0); break;   // reset
-        }
-      });
-    });
-
-    // Resolusi layar
-    $('resApplyBtn').addEventListener('click', applyResolution);
-    loadScreenInfo();
-    $('giAdd').addEventListener('click', function () { addItem('images'); });
-    $('gvAdd').addEventListener('click', function () { addItem('videos'); });
+    refreshScreenLink();
+    on('giAdd', 'click', function () { addItem('images'); });
+    on('gvAdd', 'click', function () { addItem('videos'); });
     [$('giUrl'), $('gvUrl')].forEach(function (input) {
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); addItem(input === $('giUrl') ? 'images' : 'videos'); }
       });
     });
 
-    $('loginForm').addEventListener('submit', function (event) {
+    on('loginForm', 'submit', function (event) {
       event.preventDefault();
       var btn = $('loginBtn');
       btn.disabled = true;
@@ -749,6 +783,8 @@
           showApp();
           loadConfig();
           loadStatus();
+          refreshUlasanStatus();
+          refreshScreenLink();
         })
         .catch(function (err) { setMsg($('loginMsg'), err.message); })
         .finally(function () { btn.disabled = false; });
@@ -774,11 +810,12 @@
   }
 
   function init() {
-    bindStaticEvents();
-    setupTabs();
-    setupLogo();
-    setupTests();
-    setupPassword();
+    safeSetup('tata letak & tombol', bindStaticEvents);
+    safeSetup('tab', setupTabs);
+    safeSetup('logo', setupLogo);
+    safeSetup('pengujian', setupTests);
+    safeSetup('layanan ulasan', setupUlasanService);
+    safeSetup('password', setupPassword);
 
     api('admin/session')
       .then(function (res) {
@@ -786,6 +823,7 @@
           showApp();
           loadConfig();
           loadStatus();
+          refreshUlasanStatus();
         } else {
           showLogin();
         }

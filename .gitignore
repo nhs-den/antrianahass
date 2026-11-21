@@ -9,3 +9,6 @@ package-lock.json
 # berkas sistem
 .DS_Store
 Thumbs.db
+
+# docker: berkas rahasia lokal
+docker/.env

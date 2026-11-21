@@ -200,36 +200,24 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 }
 .switch-row { display: flex; gap: 20px; flex-wrap: wrap; }
 
-/* ------------------- pas layar: tombol geser (d-pad) ------------------- */
+/* ------------------------- kartu bantuan (helper) ---------------------- */
 
-.fit-controls {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 6px;
+.helper-card { border-left: 3px solid var(--accent, #e11d48); }
+.helper-steps { margin: 10px 0 6px; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+.helper-steps li { font-size: 13px; line-height: 1.5; }
+.helper-steps small { color: var(--muted, #8ea3b9); }
+.code-block {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid rgba(127, 127, 127, 0.22);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre;
 }
 
-.dpad { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.dpad-mid { display: flex; gap: 6px; }
-.dpad-btn {
-  width: 46px;
-  height: 40px;
-  padding: 0;
-  font-size: 15px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.dpad-btn:active { transform: translateY(1px); }
-
-.fit-readout { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
-.fit-readout b { color: var(--accent-2, #ff4d6d); }
-
-@media (max-width: 560px) {
-  .dpad-btn { width: 40px; height: 36px; }
-}
 
 .advanced {
   border: 1px dashed var(--line);
@@ -437,3 +425,10 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
   .topbar-actions { width: 100%; }
   .topbar-actions .btn { flex: 1 1 auto; }
 }
+
+/* --------------------------- layanan ulasan (kontrol proses) ----------- */
+
+.svc-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+.svc-status .dot { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; flex: 0 0 auto; }
+.svc-status .dot.ok { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
+.svc-status .dot.bad { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18); }

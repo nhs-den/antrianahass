@@ -1,0 +1,22 @@
+[Unit]
+Description=AHASS Panel (Docker Compose)
+Documentation=file:///opt/antrianahass/docker/README.md
+# Tunggu Docker siap lebih dulu; bila Docker Desktop/daemon lambat, unit
+# dicoba ulang otomatis (Restart=on-failure).
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/antrianahass
+# Ganti path bila repo ada di tempat lain.
+ExecStart=/usr/bin/docker compose -f /opt/antrianahass/docker/docker-compose.yml up -d
+ExecStop=/usr/bin/docker compose -f /opt/antrianahass/docker/docker-compose.yml down
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

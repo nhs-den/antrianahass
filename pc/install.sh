@@ -188,6 +188,9 @@ if [ -r "$PASS_FILE" ]; then
   echo "  Password    : $(head -1 "$PASS_FILE" 2>/dev/null)   (file: $PASS_FILE)"
 fi
 echo
+echo "  Widget ulasan : admin → Ulasan Google → Layanan ulasan (jalankan dari browser)"
+echo "                  atau: sudo bash $APP_DIR/deploy/enable-ulasan-autostart.sh --dir <folder>"
+echo
 echo "  Cek jalur     : node $APP_DIR/pc/doctor.js --port=$PORT"
 echo "  Pasang STB    : (di STB) sudo bash pc/client/install.sh --pc=IP-PC"
 echo "  Log server    : journalctl -u ahass-pc -n 50 --no-pager"

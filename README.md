@@ -146,6 +146,39 @@ Skrip ini memasang dependensi bila perlu, membuat `ulasan-google.service`
 `/loader.js` membalas 200. Gunakan `--dry-run` untuk melihat perintah start yang
 dideteksi sebelum dipasang.
 
+### Keduanya menyala bersamaan (panel + widget ulasan)
+
+Sejak 1.3.0 panel **menjalankan sendiri** aplikasi ulasan-google sehingga tidak
+ada terminal kedua yang perlu dibuka:
+
+- Admin → **Ulasan Google → Layanan ulasan (port 3000)**:
+  status hijau/merah, tombol **Jalankan sekarang**, **Hentikan**,
+  **Pasang autostart (systemd)**, dan isian **folder aplikasi**
+  (mis. `/home/den/ulasan-google-main`; kosongkan agar dicari otomatis).
+- Centang **Jalankan otomatis bersama panel** → tiap kali panel menyala
+  (termasuk setelah reboot) widget ikut dinyalakan; kalau widget gagal,
+  panel antrian tetap jalan.
+- Untuk autostart yang tahan reboot tanpa bergantung pada panel:
+
+```bash
+sudo bash deploy/enable-ulasan-autostart.sh              # folder dicari otomatis
+sudo bash deploy/enable-ulasan-autostart.sh --dir /home/den/ulasan-google-main
+```
+
+Perintah di atas memasang `ulasan-google.service` **dan** drop-in pada
+`ahass-panel.service` (`Wants=`/`After=`) sehingga keduanya mulai berdampingan
+saat boot, tapi kegagalan widget ulasan tidak pernah menggagalkan panel.
+Installer `raspberry/install.sh` dan `stb/install.sh` menjalankan langkah ini
+otomatis bila folder `ulasan-google*` ditemukan (lewati dengan `--no-ulasan`).
+
+Cek cepat:
+
+```bash
+systemctl status ahass-panel ulasan-google
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/loader.js   # 200 = siap
+journalctl -u ulasan-google -n 20 --no-pager
+```
+
 ### Menjalankan tanpa instalasi (mode uji)
 
 ```bash
@@ -180,7 +213,7 @@ melalui menu **Keamanan**.
 | **Kotak 4 · Gambar** | Tambah / hapus / urutkan gambar |
 | **Kotak 5 · Video** | Tambah / hapus / urutkan video |
 | **Tampilan** | Lebar panel kiri (20–60%), jeda rotasi, tema, format jam, sembunyikan kursor |
-| **Tampilan → Pas layar** | Skala panel 50–100% + tombol geser ◀▶▲▼ (4 px/klik) untuk mengoreksi overscan TV |
+| **Tampilan → Pas layar** | Skala panel 50–100% + tombol geser ◀▶▲▼ (4 px/klik), **realtime**: layar kiosk bergeser saat tombol ditekan; tombol Batal mengembalikan |
 | **Tampilan → Resolusi** | Set mode HDMI dari admin (Pi): 1080p/720p/1360x768/1600x900… lalu reboot otomatis |
 | **Keamanan** | Ganti password admin |
 
@@ -236,12 +269,26 @@ browser sekali pakai lewat token berumur 3 menit.
 
 ## 6. Widget ulasan Google
 
+**Sejak 1.3.1 widget ulasan menyala otomatis** — tidak perlu memasang aplikasi
+tambahan dan tidak perlu folder `ulasan-google`:
+
+1. Panel membuka port **3000** dan menyajikannya sendiri:
+   `/loader.js` (penggambar ulasan di kotak ke-3) dan `/reviews.json` (data).
+2. Isi sumber datanya sekali di admin → **Ulasan Google**:
+   - **URL JSON ulasan** (paling mudah, mis. endpoint JSON ulasan Google), atau
+   - **Google Places API**: API key + Place ID / nama tempat.
+3. Tekan **Uji ambil ulasan sekarang** untuk memastikan datanya terbaca.
+
+Kalau port 3000 sudah dipakai aplikasi `ulasan-google` terpisah (atau kolom
+**Kode embed** / **Host** diisi), panel memakai aplikasi itu dan membiarkan
+widget bawaannya diam. Tidak ada yang perlu diubah di sisi kiosk.
+
 Ada 4 cara memasang widget di kotak ke-3. **Kalau Anda hanya punya snippet
 `loader.js` dari `ulasan-google`, pakai mode nomor 1.**
 
 | Mode | Yang dibutuhkan | Kapan dipakai |
 |---|---|---|
-| **1. Widget ulasan-google (snippet)** | kode embed `<script>…loader.js…</script>` | Aplikasi `ulasan-google` dijalankan sendiri (port **3000**) — **paling mudah** |
+| **1. Widget ulasan (bawaan/snippet)** | URL JSON ulasan **atau** kode embed `<script>…loader.js…</script>` | **Bawaan panel** (port **3000** disediakan sendiri) — paling mudah |
 | 2. JSON service | URL endpoint JSON | Bila `ulasan-google` menyediakan API JSON |
 | 3. Google Places API | API key + Place ID | Tanpa service tambahan, langsung ke Google |
 | 4. Embed halaman | URL halaman siap pakai | Bila `ulasan-google` punya halaman HTML sendiri |
@@ -352,22 +399,109 @@ Cukup tempel link — jenis media dikenali otomatis:
 
 ---
 
-### Panel tidak fullscreen / layout bertumpuk
+### Alamat panel di layar
 
-Jendela Chromium lebih kecil dari layar → panel kiri pindah ke bawah. Penyebabnya
-tidak ada **window manager** di kiosk (Chromium mengabaikan `--kiosk` tanpa WM).
-Installer Raspberry terbaru memasang `matchbox-window-manager`; untuk pemasangan
-lama jalankan ulang `sudo bash raspberry/install.sh --no-deps`.
+Di bawah tulisan status (**Antrian Terhubung**) tampil **IP perangkat saja**,
+mis. `200.100.100.111` (tanpa port, agar ringkas dan mudah dibaca dari jauh).
+Itu alamat yang dipakai STB/PC lain untuk membuka panel; diambil dari
+`/__ahass/api/health` sehingga otomatis berubah bila IP berubah (DHCP).
+URL lengkap (`http://IP:8080/`) ada pada tooltip baris tersebut.
 
-### Tepi layar terpotong (overscan TV)
+### Tata letak otomatis (semua resolusi)
 
-Admin → **Tampilan → Pas agar tidak terpotong**: turunkan skala ke 94–96% lalu
-geser dengan tombol ◀ ▶ ▲ ▼. Perubahan langsung terlihat di layar kiosk.
+Tidak ada pilihan resolusi dan tidak ada tombol geser manual. Panel menyesuaikan
+diri sendiri:
 
-### `/dev/fb0: Permission denied` di log Xorg
+- **16:9 / 16:10 / ultrawide** → dua kolom (panel kiri + DDMS).
+- **4:3 dan layar potret** → panel kiri pindah ke atas DDMS, isi panel 2 kolom.
+- **Layar kecil / pendek** → padding, teks, dan jumlah baris ulasan mengecil
+  otomatis.
+- **DDMS** diukur lalu diskalakan supaya seluruh halamannya masuk kotak
+  (`--stage-fit`), dihitung ulang setiap kali ukuran layar berubah. Header/menu
+  DDMS tidak lagi terpotong.
 
-Unit kiosk kini memuat `SupplementaryGroups=video render input audio`. Tanpa itu,
-`Group=` mengganti grup utama dan proses tidak boleh membuka framebuffer.
+Di admin tersisa dua pengaturan yang perlu: **lebar panel kiri** (20–60%) dan
+**skala tampilan** (50–100%, untuk TV yang memotong tepi/overscan). Bila layar
+kiosk tidak ikut berubah, ada baris **“Layar kiosk: terhubung”** di kartu yang
+sama — kalau tertulis *tidak terhubung*, jalankan
+`sudo systemctl restart ahass-kiosk`.
+
+### Layar DDMS hitam / kosong (riwayat & penyebab)
+
+**Penyebab yang sudah diperbaiki di 1.4.3:** grid utama memakai
+`align-items: start`, sehingga baris grid hanya setinggi isi panel kiri dan
+kotak DDMS (yang tingginya mengikuti baris) runtuh menjadi 0 px — persis
+tampilan "kotak kanan hitam kosong". Sekarang grid memakai `align-items:
+stretch` + `grid-template-rows: minmax(0, 1fr)`, kotak DDMS punya latar
+berwarna kartu, `iframe` selalu absolut 100%, dan ada tulisan status di area
+DDMS (bukan hitam polos lagi).
+
+### Layar DDMS hitam / kosong
+
+Urutan pemeriksaan (dari layar ke server):
+
+1. **Lihat kotak jam di panel kiri**: arahkan kursor/tekan lama pada baris IP —
+   tooltip memuat `DDMS: HTTP 200` atau pesan error terakhir.
+   `HTTP 502` = server DDMS tidak merespons; `401/403` = login DDMS gagal.
+2. Bila muncul tulisan **“Layar DDMS kosong”** di atas area hitam, panel sudah
+   mendeteksi isinya tidak termuat (pesan menyebut ukuran kotak layar).
+3. Periksa dari terminal:
+
+```bash
+curl -sk -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/ddms
+journalctl -u ahass-panel -n 40 --no-pager | grep -i 'proxy\|ddms'
+```
+
+4. `curl` 200 tetapi layar tetap hitam → muat ulang layar:
+   `sudo systemctl restart ahass-kiosk`.
+5. Uji juga `https://web-h2-cbr.daya-dms.id/ddms` langsung dari PC. Kalau di sana
+   kosong, masalahnya di sisi DDMS (mis. memblokir embedding), bukan di panel.
+
+Catatan teknis: iframe DDMS berukuran absolut di dalam wadahnya dan auto-fit
+dibatasi 0.6–1 serta gagal-aman (kembali ke skala 1) — jadi pembaruan tata letak
+tidak bisa lagi membuat layar DDMS hilang.
+
+## 7b. Docker (semua bagian dalam container)
+
+Bila perangkat sudah punya Docker, tidak perlu memasang Node/Chromium di
+sistem. Dua container tersedia:
+
+| Container | Isi | Port |
+|---|---|---|
+| `ahass-panel` | server panel + `/admin` + proxy DDMS + widget ulasan bawaan | 8080, 3000 |
+| `ahass-kiosk` | Chromium fullscreen (opsional, satu per layar) | – |
+
+Data (pengaturan, password, logo, video) disimpan di volume `ahass-data`,
+jadi update tidak menghapus konfigurasi.
+
+```bash
+bash docker/ahass-docker.sh up            # bangun + jalankan panel
+bash docker/ahass-docker.sh up --kiosk    # sekaligus layar kiosk
+bash docker/ahass-docker.sh status        # status + versi + alamat
+bash docker/ahass-docker.sh password      # password admin
+bash docker/ahass-docker.sh update        # ambil kode terbaru + bangun ulang
+bash docker/ahass-docker.sh reset-password "PasswordBaru123"
+bash docker/ahass-docker.sh down          # berhenti (data tetap)
+```
+
+Cara manual dengan compose:
+
+```bash
+cp docker/.env.example docker/.env
+docker compose -f docker/docker-compose.yml --env-file docker/.env up -d --build
+```
+
+Panduan lengkap (variabel, kiosk armv7 untuk Pi 3 B+, Windows 10/Docker
+Desktop, backup volume, troubleshooting): **`docker/README.md`**.
+
+Catatan penting:
+- Docker Desktop (Windows/macOS) tidak mendukung `network_mode: host` — pakai
+  `-p 8080:8080 -p 3000:3000` dan set `AHASS_DISPLAY_IP=IP-PC` supaya alamat di
+  layar benar.
+- Kiosk di dalam Docker hanya bisa menampilkan gambar bila X server host
+  tersedia (`DISPLAY=:0` + socket `/tmp/.X11-unix`). Di Windows, pakai kiosk
+  native (`pc/install.sh`).
+- Versi panel di container bisa dicek: `curl -s localhost:8080/__ahass/api/health`.
 
 ## 8. Perintah harian
 
@@ -394,8 +528,21 @@ Tidak perlu instalasi ulang. Kode dan data dipisah:
 | `/var/lib/antrianahass` | `config.json`, password admin, `secret.key`, logo unggahan | **tidak disentuh** |
 
 ```bash
-cd /root/antrianahass
+# di Raspberry Pi, folder hasil `git clone` ada di /opt/antrianahass
+cd /opt/antrianahass
 sudo bash deploy/update.sh
+
+# di Intel Compute Stick (folder lama), sesuaikan:
+#   cd /root/antrianahass
+```
+
+Agar `git pull` di skrip itu berhasil tanpa menanyakan username/password,
+sekali saja jalankan:
+
+```bash
+gh auth setup-git          # memakai login `gh auth login` yang sudah ada
+# atau, bila memakai SSH:
+git -C /opt/antrianahass remote set-url origin git@github.com:nhs-den/antrianahass.git
 ```
 
 `deploy/update.sh` melakukan: `git pull` → salin kode baru → restart panel & layar
@@ -423,6 +570,109 @@ sudo bash deploy/uninstall.sh --purge   # hapus aplikasi + data
 ```
 
 ---
+
+### `git clone` private repo gagal: "Password authentication is not supported"
+
+> **DietPi minimal tidak punya `ssh-keygen`/`ssh`** (`ssh-keygen: command not found`,
+> `cannot run ssh`). Semua cara berbasis SSH baru bisa dipakai setelah:
+> `sudo apt update && sudo apt install -y openssh-client`
+
+**Cek dulu apakah `gh` benar-benar punya sesi login untuk user yang sedang dipakai:**
+
+```bash
+gh auth status                 # sebagai dietpi
+sudo gh auth status            # sebagai root (dipakai `sudo git clone`)
+```
+
+Kalau yang satu bilang *"You are not logged into any GitHub hosts"*, login-nya
+berada di user lain. Ulangi di user yang dipakai, misal:
+
+```bash
+sudo gh auth login             # bila ingin `sudo git clone` bekerja
+sudo gh auth setup-git
+```
+
+**Cara tercepat tanpa git/SSH (paling cocok untuk kiosk):** unduh ZIP lewat
+browser (tombol **Code → Download ZIP**), lalu timpa folder lama.
+
+**Bila `sudo gh auth status` sudah "Logged in" (cara paling cepat):**
+
+```bash
+sudo gh config set git_protocol https    # sesi Anda tadi diset ke ssh
+sudo gh auth setup-git                   # tulis credential helper di /root/.gitconfig
+sudo git clone https://github.com/nhs-den/antrianahass.git /opt/antrianahass
+```
+
+Bila masih ditanya username, pakai token yang sudah tersimpan di gh:
+
+```bash
+sudo git clone https://$(sudo gh auth token)@github.com/nhs-den/antrianahass.git /opt/antrianahass
+sudo git -C /opt/antrianahass remote set-url origin https://github.com/nhs-den/antrianahass.git
+```
+
+**Dengan Personal Access Token (repo privat):** buat token di
+<https://github.com/settings/tokens> (scope `repo`), lalu:
+
+```bash
+sudo git clone https://<TOKEN>@github.com/nhs-den/antrianahass.git /opt/antrianahass
+# setelah selesai, simpan remote tanpa token agar tidak tertinggal di config:
+sudo git -C /opt/antrianahass remote set-url origin https://github.com/nhs-den/antrianahass.git
+```
+
+
+GitHub **tidak menerima password akun** untuk operasi git. Dua pilihan:
+
+```bash
+# 1) Paling mudah: setelah `gh auth login`, sambungkan gh ke git (sekali saja)
+gh auth setup-git
+sudo git clone https://github.com/nhs-den/antrianahass.git /opt/antrianahass
+
+# 2) Tanpa git sama sekali (paling aman untuk perangkat kiosk):
+#    unduh ZIP lalu timpa folder
+cd /tmp
+wget -O ahass.zip https://codeload.github.com/nhs-den/antrianahass/zip/refs/heads/main
+unzip -q ahass.zip -d /tmp/ahass-baru
+sudo rm -rf /opt/antrianahass
+sudo mv /tmp/ahass-baru/antrianahass-main /opt/antrianahass
+sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
+```
+
+- **Jangan** mengetik token/password di prompt `Username for 'https://github.com'` —
+  itulah yang menyebabkan `Invalid username or token`.
+- `gh auth login` menyimpan sesi untuk user biasa; `sudo git ...` berjalan sebagai
+  root dan **tidak** memakai sesi tersebut. Karena itu pakai `gh auth setup-git`
+  (mengisi credential helper), SSH key, atau ZIP.
+- ZIP `refs/heads/main` tidak memerlukan login bila repo bersifat publik; untuk
+  repo privat unduh ZIP lewat browser (tombol **Code → Download ZIP**) lalu
+  unggah ke perangkat (`scp`/flashdisk).
+
+### Ambil kode terbaru lalu pasang (satu perintah)
+
+Bila `/opt/antrianahass` sudah terhapus atau bukan repo git, **tidak perlu**
+`git clone` manual. Cukup dari folder mana pun yang masih punya repo ini:
+
+```bash
+sudo bash /opt/antrianahass/deploy/reinstall-from-github.sh
+# atau, bila /opt kosong, jalankan dari ZIP/hasil clone sementara:
+sudo bash ~/antrianahass/deploy/reinstall-from-github.sh --branch main
+```
+
+Skrip ini: mengambil kode branch terbaru dengan token `gh` (root sudah login),
+menyalin ke `/opt/antrianahass`, menjalankan `raspberry/install.sh --no-deps`,
+lalu me-restart `ahass-panel` + `ahass-kiosk`. Data di `/var/lib/antrianahass`
+tidak disentuh, dan token tidak ditinggalkan di `.git/config`.
+
+### Memulihkan setelah `/opt/antrianahass` terhapus
+
+Data di `/var/lib/antrianahass` (config, password admin, logo) **tidak ikut terhapus**.
+Setelah kode kembali ke `/opt/antrianahass`:
+
+```bash
+sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
+```
+
+Installer akan memakai ulang konfigurasi yang sudah ada — tidak perlu mengisi
+ulang alamat DDMS, user/password, logo, maupun kotak 4 & 5.
 
 ## 9. Tips performa di Intel Compute Stick
 
@@ -498,6 +748,7 @@ antrianahass/
 ├── deploy/
 │   ├── install.sh / update.sh / migrate.sh / uninstall.sh
 │   ├── install-ulasan.sh     # layanan widget ulasan-google (port 3000)
+│   ├── enable-ulasan-autostart.sh  # ulasan + panel menyala bersamaan saat boot
 │   ├── fix-kiosk.sh          # diagnosis + perbaikan layar kiosk (X/Chromium)
 │   ├── start-kiosk.sh
 │   ├── ahass-panel.service
