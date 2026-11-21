@@ -426,6 +426,31 @@ kiosk tidak ikut berubah, ada baris **“Layar kiosk: terhubung”** di kartu ya
 sama — kalau tertulis *tidak terhubung*, jalankan
 `sudo systemctl restart ahass-kiosk`.
 
+### Layar DDMS hitam / kosong
+
+Urutan pemeriksaan (dari layar ke server):
+
+1. **Lihat kotak jam di panel kiri**: arahkan kursor/tekan lama pada baris IP —
+   tooltip memuat `DDMS: HTTP 200` atau pesan error terakhir.
+   `HTTP 502` = server DDMS tidak merespons; `401/403` = login DDMS gagal.
+2. Bila muncul tulisan **“Layar DDMS kosong”** di atas area hitam, panel sudah
+   mendeteksi isinya tidak termuat (pesan menyebut ukuran kotak layar).
+3. Periksa dari terminal:
+
+```bash
+curl -sk -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/ddms
+journalctl -u ahass-panel -n 40 --no-pager | grep -i 'proxy\|ddms'
+```
+
+4. `curl` 200 tetapi layar tetap hitam → muat ulang layar:
+   `sudo systemctl restart ahass-kiosk`.
+5. Uji juga `https://web-h2-cbr.daya-dms.id/ddms` langsung dari PC. Kalau di sana
+   kosong, masalahnya di sisi DDMS (mis. memblokir embedding), bukan di panel.
+
+Catatan teknis: iframe DDMS berukuran absolut di dalam wadahnya dan auto-fit
+dibatasi 0.6–1 serta gagal-aman (kembali ke skala 1) — jadi pembaruan tata letak
+tidak bisa lagi membuat layar DDMS hilang.
+
 ## 8. Perintah harian
 
 ```bash
