@@ -5,6 +5,8 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var state = {
+    fit: null,
+    screen: null,
     cfg: null,
     images: [],
     videos: [],
@@ -150,6 +152,9 @@
     // Display
     $('dLeft').value = cfg.display.leftPercent || 30;
     $('leftValue').textContent = ($('dLeft').value) + '%';
+    var fit = readFit(cfg.display);
+    state.fit = fit;
+    syncFitInputs();
     $('dRotate').value = cfg.display.rotateSeconds || 12;
     $('dVideo').value = cfg.display.videoSeconds || 30;
     setSelect('dTheme', cfg.display.theme || 'dark');
@@ -195,10 +200,132 @@
     });
   }
 
+  /* ------------------------------------------------- pas layar (overscan) */
+
+  function clampNum(value, min, max, fallback) {
+    var n = Number(value);
+    if (!isFinite(n)) return fallback;
+    n = Math.round(n);
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function readFit(display) {
+    var d = display || {};
+    return {
+      scalePercent: clampNum(d.scalePercent, 50, 100, 100),
+      offsetX: clampNum(d.offsetX, -200, 200, 0),
+      offsetY: clampNum(d.offsetY, -200, 200, 0)
+    };
+  }
+
+  function syncFitInputs() {
+    var fit = state.fit || readFit(null);
+    $('dScale').value = fit.scalePercent;
+    $('scaleValue').textContent = fit.scalePercent + '%';
+    $('offsetXValue').textContent = fit.offsetX;
+    $('offsetYValue').textContent = fit.offsetY;
+  }
+
+  /**
+   * Pratinjau langsung di tab ini (tanpa server): atur variabel CSS yang
+   * dipakai .shell di public/style.css.
+   */
+  function previewFit() {
+    var fit = state.fit;
+    var root = document.documentElement.style;
+    root.setProperty('--screen-scale', String(fit.scalePercent / 100));
+    root.setProperty('--screen-x', fit.offsetX + 'px');
+    root.setProperty('--screen-y', fit.offsetY + 'px');
+  }
+
+  function moveFit(dx, dy) {
+    var fit = state.fit || readFit(null);
+    if (dx === 0 && dy === 0) {
+      state.fit = readFit(null);
+      state.fit.scalePercent = fit.scalePercent;
+    } else {
+      state.fit = {
+        scalePercent: fit.scalePercent,
+        offsetX: clampNum(fit.offsetX + dx, -200, 200, 0),
+        offsetY: clampNum(fit.offsetY + dy, -200, 200, 0)
+      };
+    }
+    syncFitInputs();
+    previewFit();
+  }
+
+  /* ------------------------------------------------ resolusi layar kiosk */
+
+  function loadScreenInfo() {
+    var mode = $('resMode');
+    var current = $('resCurrent');
+    var hint = $('resHint');
+    if (!mode || !current) return;
+
+    api('admin/system/screen').then(function (info) {
+      state.screen = info;
+      if (!info || !info.supported) {
+        current.value = 'tidak didukung di perangkat ini';
+        hint.textContent = 'Ubah resolusi manual lewat dietpi-config (Display Options → Display Resolution).';
+        $('resApplyBtn').disabled = true;
+        return;
+      }
+      current.value = (info.current || 'tidak diketahui') +
+        (info.source ? '  (' + info.source + ')' : '');
+      $('resOverscan').checked = !!info.overscanDisabled;
+
+      var matches = (info.modes || []).filter(function (m) { return m.mode === info.hdmiMode; });
+      var selected = matches.length ? matches[0].size : '';
+      if (selected) setSelect('resMode', selected);
+      hint.textContent = info.hdmiMode
+        ? 'Terbaca dari /boot/firmware/config.txt: mode ' + info.hdmiMode + '.'
+        : 'Belum ada hdmi_mode khusus; DietPi memakai mode otomatis (EDID TV).';
+    }).catch(function (err) {
+      current.value = 'gagal dibaca';
+      hint.textContent = 'Tidak bisa membaca setelan layar: ' + err.message;
+    });
+  }
+
+  function applyResolution() {
+    var size = getSelect('resMode');
+    var overscan = $('resOverscan').checked;
+    if (!size && !overscan) {
+      toast('Pilih resolusi dulu (atau centang matikan overscan).', 'bad');
+      return;
+    }
+
+    var body = { overscan: overscan };
+    if (size) {
+      var parts = String(size).split('x');
+      body.width = Number(parts[0]);
+      body.height = Number(parts[1]);
+    }
+
+    var label = size || 'overscan';
+    if (!window.confirm('Terapkan ' + label + ' lalu perangkat akan reboot. Layar akan mati beberapa saat. Lanjut?')) {
+      return;
+    }
+
+    var btn = $('resApplyBtn');
+    btn.disabled = true;
+    api('admin/system/resolution', { method: 'POST', body: body })
+      .then(function (res) {
+        toast(res.message || 'Resolusi diterapkan. Perangkat reboot…', 'ok');
+        $('resHint').textContent = 'Menunggu reboot… layar akan menyala kembali otomatis.';
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        toast('Gagal menerapkan resolusi: ' + err.message, 'bad');
+      });
+  }
+
   function collect() {
     return {
       display: {
         leftPercent: Number($('dLeft').value),
+        scalePercent: state.fit ? state.fit.scalePercent : 100,
+        offsetX: state.fit ? state.fit.offsetX : 0,
+        offsetY: state.fit ? state.fit.offsetY : 0,
         clock24: $('dClock24').checked,
         showSeconds: $('dSeconds').checked,
         theme: getSelect('dTheme') || 'dark',
@@ -578,6 +705,31 @@
     $('dLeft').addEventListener('input', function () {
       $('leftValue').textContent = this.value + '%';
     });
+
+    // Pas layar: skala + tombol geser
+    $('dScale').addEventListener('input', function () {
+      state.fit = state.fit || readFit(null);
+      state.fit.scalePercent = clampNum(this.value, 50, 100, 100);
+      syncFitInputs();
+      previewFit();
+    });
+    $('fitSaveBtn').addEventListener('click', function () { save(); });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-move]'), function (btn) {
+      btn.addEventListener('click', function () {
+        switch (btn.getAttribute('data-move')) {
+          case 'up': moveFit(0, -4); break;
+          case 'down': moveFit(0, 4); break;
+          case 'left': moveFit(-4, 0); break;
+          case 'right': moveFit(4, 0); break;
+          default: moveFit(0, 0); break;   // reset
+        }
+      });
+    });
+
+    // Resolusi layar
+    $('resApplyBtn').addEventListener('click', applyResolution);
+    loadScreenInfo();
     $('giAdd').addEventListener('click', function () { addItem('images'); });
     $('gvAdd').addEventListener('click', function () { addItem('videos'); });
     [$('giUrl'), $('gvUrl')].forEach(function (input) {

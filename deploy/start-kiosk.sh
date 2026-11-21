@@ -59,7 +59,7 @@ fi
 
 echo "Menjalankan $CHROME untuk $URL (DISPLAY=$DISPLAY)" >&2
 
-DEFAULT_FLAGS="--kiosk --no-first-run --no-default-browser-check --noerrdialogs \
+DEFAULT_FLAGS="--kiosk --start-fullscreen --no-first-run --no-default-browser-check --noerrdialogs \
 --disable-infobars --disable-session-crashed-bubble --disable-translate --disable-sync \
 --disable-background-networking --disable-component-update --disable-default-apps \
 --disable-extensions --disable-pinch --overscroll-history-navigation=0 \

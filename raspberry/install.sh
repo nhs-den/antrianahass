@@ -7,6 +7,8 @@
 #   sudo bash raspberry/install.sh --mode=kiosk     # tty1 + xinit (tanpa desktop)
 #   sudo bash raspberry/install.sh --no-deps        # lewati apt-get
 #   sudo bash raspberry/install.sh --no-tweaks      # lewati sysctl/journald/logrotate
+#   sudo bash raspberry/install.sh --resolution=1920x1080   # set mode HDMI
+#   sudo bash raspberry/install.sh --dry-run        # tampilkan rencana saja
 #
 # Aman dijalankan berulang: konfigurasi di /var/lib/antrianahass tidak disentuh.
 set -euo pipefail
@@ -18,6 +20,8 @@ PANEL_USER="${PANEL_USER:-ahass}"
 KIOSK_USER="${KIOSK_USER:-}"
 MODE="${MODE:-auto}"
 INSTALL_DEPS=1
+RESOLUTION=""
+DRY=0
 APPLY_TWEAKS=1
 
 NODE_BIN="/usr/bin/node"
@@ -40,6 +44,8 @@ for arg in "$@"; do
     --mode=*) MODE="${arg#*=}" ;;
     --user=*) KIOSK_USER="${arg#*=}" ;;
     --port=*) PORT="${arg#*=}" ;;
+    --resolution=*) RESOLUTION="${arg#*=}" ;;
+    --dry-run) DRY=1 ;;
     -h|--help)
       awk 'NR>1 && NR<=20 && /^#/ {sub(/^# ?/, ""); print}' "${BASH_SOURCE[0]}"
       exit 0
@@ -48,12 +54,39 @@ for arg in "$@"; do
   esac
 done
 
+if [ ! -f "$SRC_DIR/server.js" ] || [ ! -f "$PI_DIR/units/ahass-kiosk.service" ]; then
+  die "Sumber aplikasi tidak lengkap di $SRC_DIR.
+     Jalankan dari dalam repo utuh, bukan dari folder raspberry/ saja:
+       git clone https://github.com/nhs-den/antrianahass.git ~/antrianahass
+       sudo bash ~/antrianahass/raspberry/install.sh"
+fi
+
 case "$MODE" in
   auto|desktop|kiosk) ;;
   *) die "Mode harus auto, desktop, atau kiosk (diberikan: $MODE)" ;;
 esac
 
-[ "$(id -u)" = "0" ] || die "Jalankan sebagai root: sudo bash raspberry/install.sh"
+if [ "$DRY" != "1" ]; then
+  [ "$(id -u)" = "0" ] || die "Jalankan sebagai root: sudo bash raspberry/install.sh"
+fi
+
+# --------------------------------------------------------------- 0. rencana
+if [ "$DRY" = "1" ]; then
+  log "RENCANA PEMASANGAN (dry-run, tidak ada yang diubah):"
+  echo "    sumber        : $SRC_DIR"
+  echo "    aplikasi      : $APP_DIR"
+  echo "    data          : $DATA_DIR (tidak disentuh)"
+  echo "    pengguna layar: ${KIOSK_USER:-<otomatis>}"
+  echo "    mode layar    : $MODE"
+  echo "    port          : $PORT"
+  echo "    resolusi      : ${RESOLUTION:-<tidak diubah>}"
+  echo "    paket         : nodejs chromium xserver-xorg xinit xauth x11-xserver-utils"
+  echo "                    x11-utils x11-apps xserver-xorg-video-fbdev"
+  echo "    kiosk         : window manager mini + xinit di tty1"
+  echo "    izin          : chmod 755 $APP_DIR + a+rX (umask root DietPi = 077)"
+  echo "    unit          : ahass-panel, ahass-kiosk, ahass-restart.timer"
+  exit 0
+fi
 
 # ------------------------------------------------------------ 1. deteksi board
 MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || echo 'tidak diketahui')"
@@ -93,7 +126,9 @@ if [ "$INSTALL_DEPS" = "1" ]; then
   log "Memperbarui daftar paket…"
   apt-get update -qq || warn "apt-get update gagal, memakai cache lama."
 
-  PACKAGES="ca-certificates curl fonts-dejavu-core logrotate xserver-xorg xinit xauth x11-xserver-utils"
+  # xserver-xorg-video-fbdev WAJIB: di DietPi tanpa desktop, X tidak punya
+  # driver sehingga berhenti dengan "(EE) no screens found".
+  PACKAGES="ca-certificates curl fonts-dejavu-core logrotate xserver-xorg xinit xauth x11-xserver-utils x11-utils x11-apps xserver-xorg-video-fbdev"
 
   command -v unclutter >/dev/null 2>&1 || PACKAGES="$PACKAGES unclutter"
   command -v node >/dev/null 2>&1 || PACKAGES="$PACKAGES nodejs"
@@ -171,6 +206,17 @@ if [ "$MODE" = "desktop" ]; then
 fi
 
 # ------------------------------------------------------------- 4. salin app
+# Penjaga: kalau skrip ini dipanggil dari salinan folder raspberry/ saja
+# (bukan repo utuh), SRC_DIR akan menunjuk folder induk yang salah dan yang
+# tersalin ke /opt bukan aplikasi — gejalanya "Cannot find module server.js"
+# dan deploy/ hilang.
+if [ ! -f "$SRC_DIR/server.js" ] || [ ! -f "$SRC_DIR/deploy/start-kiosk.sh" ]; then
+  die "Sumber aplikasi tidak lengkap di $SRC_DIR (server.js / deploy/start-kiosk.sh tidak ada).
+     Jalankan dari dalam repo utuh, mis.:
+       git clone https://github.com/nhs-den/antrianahass.git ~/antrianahass
+       sudo bash ~/antrianahass/raspberry/install.sh"
+fi
+
 log "Menyalin aplikasi ke $APP_DIR…"
 mkdir -p "$APP_DIR"
 if command -v rsync >/dev/null 2>&1; then
@@ -185,6 +231,15 @@ fi
 
 mkdir -p "$DATA_DIR/uploads" "$DATA_DIR/chromium"
 chown -R root:root "$APP_DIR"
+
+# Permission harus dipaksa: umask root DietPi = 077, sehingga folder baru jadi
+# 0700 milik root dan service yang berjalan sebagai 'ahass' gagal chdir
+# (gejala: "status=200/CHDIR" berulang). chmod a+rX hanya menambah x pada
+# folder & berkas yang sudah executable, jadi skrip tidak jadi executable
+# untuk semua orang.
+chmod 755 "$APP_DIR"
+chmod -R a+rX "$APP_DIR"
+
 chown -R "$PANEL_USER:$PANEL_USER" "$DATA_DIR"
 chmod 750 "$DATA_DIR"
 chown -R "$KIOSK_USER:$KIOSK_USER" "$DATA_DIR/chromium"
@@ -261,14 +316,70 @@ if [ "$MODE" = "desktop" ]; then
 else
   log "Menyiapkan mode kiosk (tty1 + xinit)…"
 
+  # Window manager mini. Tanpa WM, Chromium mengabaikan --kiosk /
+  # --start-fullscreen dan memakai ukuran jendela tersimpan di profil
+  # (gejala: jendela 945x1060 di layar 1920x1080, layout jadi bertumpuk).
+  WM_BIN=""
+  if ! command -v matchbox-window-manager >/dev/null 2>&1 \
+     && ! command -v openbox >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends matchbox-window-manager >/dev/null 2>&1 \
+      || DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends openbox >/dev/null 2>&1 \
+      || warn "Window manager tidak bisa dipasang; fullscreen mungkin tidak sempurna."
+  fi
+  for cand in matchbox-window-manager openbox fluxbox; do
+    command -v "$cand" >/dev/null 2>&1 && { WM_BIN="$cand"; break; }
+  done
+
   install -m 644 "$PI_DIR/units/ahass-kiosk.service" /etc/systemd/system/ahass-kiosk.service
   sed -i "s#__KIOSK_USER__#$KIOSK_USER#g" /etc/systemd/system/ahass-kiosk.service
   sed -i "s#__CHROMIUM_FLAGS__#$CHROMIUM_FLAGS_LINE#g" /etc/systemd/system/ahass-kiosk.service
+  # Profil Chromium di home pengguna kiosk: folder data tetap boleh 750 dan
+  # tidak perlu dilonggarkan hanya agar Chromium bisa menulis profil.
+  sed -i "s#^Environment=AHASS_PROFILE_DIR=.*#Environment=AHASS_PROFILE_DIR=$KIOSK_HOME/.config/ahass-kiosk#" \
+    /etc/systemd/system/ahass-kiosk.service
   if [ "$PORT" != "8080" ]; then
     sed -i "s#^Environment=AHASS_URL=.*#Environment=AHASS_URL=http://127.0.0.1:$PORT/#" /etc/systemd/system/ahass-kiosk.service
   fi
-  if [ "$DATA_DIR" != "/var/lib/antrianahass" ]; then
-    sed -i "s#/var/lib/antrianahass/chromium#$DATA_DIR/chromium#g" /etc/systemd/system/ahass-kiosk.service
+
+  # Skrip klien kiosk disalin ke /usr/local/bin supaya tidak ikut berubah/hilang
+  # setiap kali folder /opt diperbarui.
+  install -m 755 "$APP_DIR/deploy/start-kiosk.sh" /usr/local/bin/ahass-start-kiosk.sh
+  if [ -n "$WM_BIN" ]; then
+    cat > /usr/local/bin/ahass-kiosk-boot.sh <<BOOTEOF
+#!/bin/sh
+# Dibuat raspberry/install.sh: jalankan window manager mini, lalu kiosk.
+$WM_BIN $([ "$WM_BIN" = "matchbox-window-manager" ] && echo "-use_titlebar no") >/dev/null 2>&1 &
+sleep 1
+exec /usr/local/bin/ahass-start-kiosk.sh
+BOOTEOF
+    chmod 755 /usr/local/bin/ahass-kiosk-boot.sh
+    sed -i "s#^ExecStart=.*#ExecStart=/usr/bin/xinit /usr/local/bin/ahass-kiosk-boot.sh -- :0 vt1 -nolisten tcp -nocursor#" \
+      /etc/systemd/system/ahass-kiosk.service
+  else
+    sed -i "s#^ExecStart=.*#ExecStart=/usr/bin/xinit /usr/local/bin/ahass-start-kiosk.sh -- :0 vt1 -nolisten tcp -nocursor#" \
+      /etc/systemd/system/ahass-kiosk.service
+  fi
+
+  # Grup tambahan WAJIB: Group= mengganti grup utama sehingga tanpa
+  # SupplementaryGroups, proses tidak bisa membuka /dev/fb0 (root:video 660).
+  mkdir -p "/etc/systemd/system/ahass-kiosk.service.d"
+  cat > "/etc/systemd/system/ahass-kiosk.service.d/10-groups.conf" <<'GRPEOF'
+[Service]
+SupplementaryGroups=video render input audio
+GRPEOF
+
+  # Driver fbdev: pastikan X punya sesuatu untuk menggambar bila /dev/dri
+  # tidak tersedia (kernel legacy framebuffer seperti di DietPi).
+  if [ ! -e /dev/dri/card0 ]; then
+    mkdir -p /etc/X11/xorg.conf.d
+    cat > /etc/X11/xorg.conf.d/99-ahass-fbdev.conf <<'FBEOF'
+# Dibuat raspberry/install.sh: pakai framebuffer legacy bila KMS tidak aktif.
+Section "Device"
+    Identifier "AHASS FBDEV"
+    Driver     "fbdev"
+    Option     "fbdev" "/dev/fb0"
+EndSection
+FBEOF
   fi
 
   # jangan biarkan autostart desktop ikut menjalankan launcher kedua
@@ -277,9 +388,29 @@ else
     sed -i '\#ahass-kiosk-desktop\.sh#d' "$AUTOSTART_FILE"
   fi
 
+  install -d -m 755 -o "$KIOSK_USER" -g "$KIOSK_USER" "$KIOSK_HOME/.config/ahass-kiosk" 2>/dev/null || true
+
   systemctl daemon-reload
   systemctl enable ahass-kiosk.service >/dev/null 2>&1
-  ok "Unit ahass-kiosk terpasang (aktif pada boot berikutnya)."
+  ok "Unit ahass-kiosk terpasang${WM_BIN:+ (WM: $WM_BIN)} (aktif pada boot berikutnya)."
+fi
+
+# ------------------------------------------------- 6b. resolusi HDMI (opsional)
+if [ -n "$RESOLUTION" ]; then
+  RW="${RESOLUTION%x*}"
+  RH="${RESOLUTION#*x}"
+  log "Menyetel resolusi HDMI ke ${RW}x${RH}…"
+  RESULT="$(node -e "
+    const s = require('$APP_DIR/lib/screen');
+    try {
+      const r = s.apply({ width: $RW, height: $RH });
+      console.log('ok:' + r.changes.join(', '));
+    } catch (e) { console.log('err:' + e.message); }
+  " 2>/dev/null || echo 'err:node gagal')"
+  case "$RESULT" in
+    ok:*) ok "Resolusi diset (${RESULT#ok:}). Reboot untuk menerapkan." ;;
+    *) warn "Resolusi tidak bisa diset (${RESULT#err:}). Atur lewat dietpi-config." ;;
+  esac
 fi
 
 # --------------------------------------------------------------- 7. tweak OS

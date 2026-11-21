@@ -400,6 +400,70 @@
             <label class="switch"><input type="checkbox" id="dCursor"><span>Sembunyikan kursor</span></label>
           </div>
         </div>
+
+        <div class="card">
+          <h3>Pas agar tidak terpotong (overscan TV)</h3>
+          <p class="muted small">
+            Kalau jam/tepi kanan terpotong di TV, perkecil skala lalu geser dengan tombol.
+            Perubahan langsung terlihat di layar, tanpa restart.
+          </p>
+
+          <label class="field">
+            <span>Skala panel: <b id="scaleValue">100%</b></span>
+            <input type="range" id="dScale" min="50" max="100" step="1">
+            <small>Mulai dari 94–96% kalau tepi layar terpotong.</small>
+          </label>
+
+          <div class="fit-controls">
+            <div class="dpad" role="group" aria-label="Geser panel">
+              <button class="btn ghost dpad-btn" type="button" data-move="up" title="Geser ke atas">▲</button>
+              <div class="dpad-mid">
+                <button class="btn ghost dpad-btn" type="button" data-move="left" title="Geser ke kiri">◀</button>
+                <button class="btn ghost dpad-btn" type="button" data-move="reset" title="Kembalikan ke tengah">◎</button>
+                <button class="btn ghost dpad-btn" type="button" data-move="right" title="Geser ke kanan">▶</button>
+              </div>
+              <button class="btn ghost dpad-btn" type="button" data-move="down" title="Geser ke bawah">▼</button>
+            </div>
+            <div class="fit-readout">
+              <div>Geser X: <b id="offsetXValue">0</b> px</div>
+              <div>Geser Y: <b id="offsetYValue">0</b> px</div>
+              <small class="muted">1 klik = 4 px. Tombol ◎ mengembalikan ke 0,0.</small>
+              <button class="btn primary" id="fitSaveBtn" type="button">Simpan pas layar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Resolusi layar perangkat</h3>
+          <p class="muted small">
+            Beberapa TV menampilkan mode HDMI yang lebih kecil dari aslinya. Pilih resolusi
+            yang paling cocok, lalu tekan <b>Terapkan</b> — perangkat akan reboot sendiri.
+          </p>
+          <div class="grid-3">
+            <label class="field">
+              <span>Resolusi</span>
+              <select id="resMode">
+                <option value="">— pilih —</option>
+                <option value="1920x1080">1920×1080 (Full HD, 16:9)</option>
+                <option value="1280x720">1280×720 (HD, paling ringan)</option>
+                <option value="1360x768">1360×768 (HD Ready)</option>
+                <option value="1600x900">1600×900</option>
+                <option value="1440x900">1440×900 (16:10)</option>
+                <option value="1024x768">1024×768 (4:3)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Setelan saat ini</span>
+              <input type="text" id="resCurrent" readonly>
+            </label>
+            <div class="field">
+              <span>&nbsp;</span>
+              <button class="btn primary" id="resApplyBtn" type="button">Terapkan &amp; reboot</button>
+            </div>
+          </div>
+          <label class="switch"><input type="checkbox" id="resOverscan"><span>Matikan overscan TV (<code>disable_overscan=1</code>)</span></label>
+          <p class="muted small" id="resHint"></p>
+        </div>
       </section>
 
       <!-- ------------------------------ SECURITY ------------------------- -->

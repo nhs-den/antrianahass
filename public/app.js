@@ -549,6 +549,7 @@
     state.cfg = cfg;
 
     document.documentElement.style.setProperty('--left', (cfg.display.leftPercent || 30) + '%');
+    applyScreenFit(cfg.display);
     document.documentElement.setAttribute('data-theme', cfg.display.theme === 'light' ? 'light' : 'dark');
     document.body.classList.toggle('kiosk', cfg.display.cursorHidden !== false);
 
@@ -566,6 +567,23 @@
     startVideoRotation();
     loadReviews(false);
     loadFrame(false);
+  }
+
+  /**
+   * Terapkan skala + geser panel (koreksi overscan TV).
+   * Nilai diatur di admin: skala 50-100%, geser -200..200 piksel.
+   */
+  function applyScreenFit(display) {
+    var d = display || {};
+    var scale = Number(d.scalePercent);
+    if (!isFinite(scale) || scale <= 0) scale = 100;
+    scale = Math.min(100, Math.max(50, scale)) / 100;
+    var x = Number(d.offsetX) || 0;
+    var y = Number(d.offsetY) || 0;
+    var root = document.documentElement.style;
+    root.setProperty('--screen-scale', String(scale));
+    root.setProperty('--screen-x', x + 'px');
+    root.setProperty('--screen-y', y + 'px');
   }
 
   function loadConfig() {

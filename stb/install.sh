@@ -195,6 +195,8 @@ fi
 run mkdir -p "$DATA_DIR/uploads" "$DATA_DIR/chromium" /etc/ahass
 if [ "$DRY" != "1" ]; then
   chown -R root:root "$APP_DIR"
+  # umask root bisa 077 (DietPi): folder 0700 membuat service gagal chdir.
+  chmod 755 "$APP_DIR" && chmod -R a+rX "$APP_DIR"
   chown -R "$PANEL_USER:$PANEL_USER" "$DATA_DIR"
   chmod 750 "$DATA_DIR"
   chown -R "$KIOSK_USER:$KIOSK_USER" "$DATA_DIR/chromium"
