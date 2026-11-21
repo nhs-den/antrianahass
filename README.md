@@ -428,6 +428,23 @@ Tambahan:
 - Kalau tombol ditekan saat sudah di batas (20%/60% atau 40%/100%), muncul pesan
   "Sudah di batas …" — jadi tidak terasa macet.
 
+### Tombol pas layar tidak bereaksi / tampilan berubah sendiri
+
+Dua penyebab yang sudah diperbaiki sejak 1.3.3:
+
+1. **Browser memakai JS lama** (tombol memanggil elemen yang belum ada di HTML
+   baru). Sekarang halaman admin menampilkan **versi halaman** di atas tombol;
+   kalau tombol tetap diam, tekan **Ctrl+Shift+R** sekali. Sejak 1.3.3 listener
+   dipasang dengan aman, jadi satu bagian yang gagal tidak mematikan yang lain.
+2. **Terjemahan otomatis Google Translate** (Chrome menawarkan "Terjemahkan
+   halaman ini?"). Penerjemah ini mengubah teks & tata letak sehingga tombol
+   tampak tertukar/mati. Sejak 1.3.3:
+   - halaman mengirim `google: notranslate`, `<html translate="no">`,
+     `Content-Language: id`, dan Chromium dijalankan dengan
+     `--disable-features=Translate,…` (sudah ada di `chromium-flags.conf`);
+   - matikan juga di perangkat: **Chrome → Setelan → Bahasa → "Tawarkan
+     terjemahan"** (mati), dan hapus ekstensi penerjemah bila ada.
+
 ### Pratinjau realtime dari admin
 
 Setiap penekanan tombol geser/skala di **Tampilan → Pas layar** langsung dikirim

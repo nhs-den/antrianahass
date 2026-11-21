@@ -57,6 +57,30 @@
     });
   }
 
+  /**
+   * Jalankan setup satu per satu: kalau satu bagian gagal (mis. karena versi
+   * HTML & JS tidak sinkron setelah update), tombol lain tetap hidup.
+   * Sebelumnya satu error bisa membuat SEMUA tombol pas layar mati.
+   */
+  function safeSetup(name, fn) {
+    try {
+      fn();
+    } catch (err) {
+      if (window.console) console.error('[admin] gagal menyiapkan ' + name + ':', err);
+      try { toast('Bagian "' + name + '" gagal dimuat: ' + err.message, 'bad'); } catch (_e) { /* diabaikan */ }
+    }
+  }
+
+  /**
+   * Pasang event listener dengan aman. Bila elemennya tidak ada (mis. HTML
+   * lama dari cache browser), lewati saja - tombol lain tetap bekerja.
+   */
+  function on(target, event, handler) {
+    var el = typeof target === 'string' ? $(target) : target;
+    if (el && el.addEventListener) el.addEventListener(event, handler);
+    return el;
+  }
+
   function setMsg(el, text, ok) {
     el.textContent = text || '';
     el.className = 'form-msg' + (ok ? ' ok' : '');
@@ -244,10 +268,27 @@
     });
   }
 
+  /** Nilai slider lebar panel; aman bila elemennya belum ada. */
+  function leftPercentValue(fallback) {
+    var el = $('dLeft');
+    var n = el ? Number(el.value) : 0;
+    if (!isFinite(n) || n <= 0) {
+      n = Number(fallback) || (state.cfg && state.cfg.display && state.cfg.display.leftPercent) || 30;
+    }
+    return n;
+  }
+
+  function setLeftPercent(value) {
+    var el = $('dLeft');
+    if (el) el.value = value;
+    var label = $('leftValue');
+    if (label) label.textContent = value + '%';
+  }
+
   function syncFitInputs() {
     var fit = state.fit || readFit(null);
     $('scaleValue').textContent = fit.scalePercent + '%';
-    var left = Number($('dLeft').value) || (state.cfg && state.cfg.display && state.cfg.display.leftPercent) || 30;
+    var left = leftPercentValue();
     $('boxSizeValue').textContent = Math.round(left) + '% × ' + Math.round(fit.boxHeightPercent || 100) + '%';
     $('offsetXValue').textContent = fit.offsetX;
     $('offsetYValue').textContent = fit.offsetY;
@@ -265,10 +306,7 @@
     var fit = state.fit || readFit(null);
     // Slider bisa belum terisi (fillForm belum jalan) — jangan kirim 0, karena
     // server akan menjepitnya ke 20% dan panel kiri tiba-tiba menyempit.
-    var left = Number($('dLeft').value);
-    if (!isFinite(left) || left <= 0) {
-      left = (state.cfg && state.cfg.display && state.cfg.display.leftPercent) || 30;
-    }
+    var left = leftPercentValue();
     var payload = {
       display: {
         leftPercent: left,
@@ -346,7 +384,7 @@
    */
   function adjustEdge(action) {
     var fit = state.fit || readFit(null);
-    var left = clampNum(Number($('dLeft').value) || 30, 20, 60, 30);
+    var left = clampNum(leftPercentValue(), 20, 60, 30);
     var height = clampNum(fit.boxHeightPercent, 40, 100, 100);
     var step = 1;   // 1% per klik
 
@@ -364,8 +402,7 @@
     if (action.indexOf('top-') === 0) anchor = 'bottom';
     else if (action.indexOf('bottom-') === 0) anchor = 'top';
 
-    $('dLeft').value = left;
-    $('leftValue').textContent = left + '%';
+    setLeftPercent(left);
     state.fit = {
       scalePercent: fit.scalePercent,
       offsetX: fit.offsetX,
@@ -470,7 +507,7 @@
   function collect() {
     return {
       display: {
-        leftPercent: Number($('dLeft').value),
+        leftPercent: clampNum(leftPercentValue(), 20, 60, 30),
         boxHeightPercent: (state.fit && state.fit.boxHeightPercent) || 100,
         boxAnchor: (state.fit && state.fit.boxAnchor) || 'top',
         scalePercent: state.fit ? state.fit.scalePercent : 100,
@@ -648,7 +685,7 @@
   /* ---------------------------------------------------------------- logo */
 
   function setupLogo() {
-    $('logoFile').addEventListener('change', function (event) {
+    on('logoFile', 'change', function (event) {
       var file = event.target.files && event.target.files[0];
       if (!file) return;
       if (file.size > 5 * 1024 * 1024) {
@@ -669,7 +706,7 @@
       reader.readAsDataURL(file);
     });
 
-    $('logoResetBtn').addEventListener('click', function () {
+    on('logoResetBtn', 'click', function () {
       api('admin/logo', { method: 'POST', body: { reset: true } })
         .then(function (res) {
           $('lUrl').value = res.url;
@@ -679,7 +716,7 @@
         .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); });
     });
 
-    $('lUrl').addEventListener('input', function () {
+    on('lUrl', 'input', function () {
       $('logoPreview').src = $('lUrl').value || '/assets/logo.png';
     });
   }
@@ -734,7 +771,7 @@
   }
 
   function setupTests() {
-    $('pingBtn').addEventListener('click', function () {
+    on('pingBtn', 'click', function () {
       var btn = this;
       btn.disabled = true;
       api('admin/ddms/ping', { method: 'POST' })
@@ -750,7 +787,7 @@
         .finally(function () { btn.disabled = false; });
     });
 
-    $('loginTestBtn').addEventListener('click', function () {
+    on('loginTestBtn', 'click', function () {
       var btn = this;
       btn.disabled = true;
       showResult($('testResult'), 'Mencoba login otomatis…', true);
@@ -778,7 +815,7 @@
         .finally(function () { btn.disabled = false; });
     });
 
-    $('reviewTestBtn').addEventListener('click', function () {
+    on('reviewTestBtn', 'click', function () {
       var btn = this;
       btn.disabled = true;
       showResult($('reviewResult'), 'Mengambil ulasan…', true);
@@ -810,11 +847,11 @@
         .finally(function () { btn.disabled = false; });
     });
 
-    $('scriptPreviewBtn').addEventListener('click', function () {
+    on('scriptPreviewBtn', 'click', function () {
       window.open('/__ahass/ulasan', '_blank', 'noopener');
     });
 
-    $('reviewCacheBtn').addEventListener('click', function () {
+    on('reviewCacheBtn', 'click', function () {
       api('admin/reviews/clear-cache', { method: 'POST' })
         .then(function () { toast('Cache ulasan dikosongkan.', 'ok'); })
         .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); });
@@ -877,11 +914,11 @@
   }
 
   function setupUlasanService() {
-    $('uSvcStart').addEventListener('click', function () { ulasanAction('start', this); });
-    $('uSvcStop').addEventListener('click', function () { ulasanAction('stop', this); });
-    $('uSvcInstall').addEventListener('click', function () { ulasanAction('install', this); });
-    $('uSvcRefresh').addEventListener('click', function () { refreshUlasanStatus(); });
-    $('uSvcTest').addEventListener('click', function () {
+    on('uSvcStart', 'click', function () { ulasanAction('start', this); });
+    on('uSvcStop', 'click', function () { ulasanAction('stop', this); });
+    on('uSvcInstall', 'click', function () { ulasanAction('install', this); });
+    on('uSvcRefresh', 'click', function () { refreshUlasanStatus(); });
+    on('uSvcTest', 'click', function () {
       var btn = this;
       btn.disabled = true;
       btn.textContent = 'mengambil…';
@@ -897,13 +934,13 @@
         .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); })
         .finally(function () { btn.disabled = false; btn.textContent = 'Uji ambil ulasan sekarang'; });
     });
-    $('rScriptPort').addEventListener('change', function () { $('uSvcPort').textContent = this.value || 3000; });
+    on('rScriptPort', 'change', function () { $('uSvcPort').textContent = this.value || 3000; });
   }
 
   /* ------------------------------------------------------------ password */
 
   function setupPassword() {
-    $('passwordBtn').addEventListener('click', function () {
+    on('passwordBtn', 'click', function () {
       var current = $('secCurrent').value;
       var next = $('secNext').value;
       var confirm = $('secConfirm').value;
@@ -926,23 +963,24 @@
   /* ----------------------------------------------------------------- init */
 
   function bindStaticEvents() {
-    $('saveBtn').addEventListener('click', function () { save(false); });
-    $('logoutBtn').addEventListener('click', function () {
+    on('saveBtn', 'click', function () { save(false); });
+    on('logoutBtn', 'click', function () {
       api('admin/logout', { method: 'POST' }).then(showLogin).catch(showLogin);
     });
-    $('rMode').addEventListener('change', function () {
+    on('rMode', 'change', function () {
       state.reviewMode = $('rMode').value || getSelect('rMode');
       updateModeFields();
     });
-    $('dLeft').addEventListener('input', function () {
-      $('leftValue').textContent = this.value + '%';
+    on('dLeft', 'input', function () {
+      var label = $('leftValue');
+      if (label) label.textContent = this.value + '%';
       pushPreview(false);
     });
-    $('dLeft').addEventListener('change', function () { pushPreview(true); });
+    on('dLeft', 'change', function () { pushPreview(true); });
 
     // Pas layar: dua kelompok tombol (geser & ukur), semuanya realtime
-    $('fitSaveBtn').addEventListener('click', function () { save(); });
-    $('fitCancelBtn').addEventListener('click', function () {
+    on('fitSaveBtn', 'click', function () { save(); });
+    on('fitCancelBtn', 'click', function () {
       stopPreview();
       toast('Pratinjau dibatalkan, layar kembali ke setelan tersimpan.', 'ok');
     });
@@ -966,11 +1004,10 @@
       });
     });
 
-    $('fitResetBtn').addEventListener('click', function () {
+    on('fitResetBtn', 'click', function () {
       var fit = state.fit || readFit(null);
       state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0, boxHeightPercent: 100, boxAnchor: 'top' };
-      $('dLeft').value = 30;
-      $('leftValue').textContent = '30%';
+      setLeftPercent(30);
       syncFitInputs();
       previewFit();
       pushPreview(true);
@@ -991,18 +1028,18 @@
     });
 
     // Resolusi layar
-    $('resApplyBtn').addEventListener('click', applyResolution);
+    on('resApplyBtn', 'click', applyResolution);
     loadScreenInfo();
     guardPreviewExit();
-    $('giAdd').addEventListener('click', function () { addItem('images'); });
-    $('gvAdd').addEventListener('click', function () { addItem('videos'); });
+    on('giAdd', 'click', function () { addItem('images'); });
+    on('gvAdd', 'click', function () { addItem('videos'); });
     [$('giUrl'), $('gvUrl')].forEach(function (input) {
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); addItem(input === $('giUrl') ? 'images' : 'videos'); }
       });
     });
 
-    $('loginForm').addEventListener('submit', function (event) {
+    on('loginForm', 'submit', function (event) {
       event.preventDefault();
       var btn = $('loginBtn');
       btn.disabled = true;
@@ -1039,12 +1076,12 @@
   }
 
   function init() {
-    bindStaticEvents();
-    setupTabs();
-    setupLogo();
-    setupTests();
-    setupUlasanService();
-    setupPassword();
+    safeSetup('tata letak & tombol', bindStaticEvents);
+    safeSetup('tab', setupTabs);
+    safeSetup('logo', setupLogo);
+    safeSetup('pengujian', setupTests);
+    safeSetup('layanan ulasan', setupUlasanService);
+    safeSetup('password', setupPassword);
 
     api('admin/session')
       .then(function (res) {
