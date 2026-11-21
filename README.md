@@ -407,18 +407,26 @@ Itu alamat yang dipakai STB/PC lain untuk membuka panel; diambil dari
 `/__ahass/api/health` sehingga otomatis berubah bila IP berubah (DHCP).
 URL lengkap (`http://IP:8080/`) ada pada tooltip baris tersebut.
 
-### Tombol pas layar (geser & ukur)
+### Tombol pas layar: per sisi
 
-Ada **dua kelompok tombol** di **Tampilan → Pas agar tidak terpotong**, keduanya
-langsung berlaku di layar kiosk:
+Di **Tampilan → Pas agar tidak terpotong** ada empat kelompok tombol. Masing-masing
+menggerakkan **sisi layarnya sendiri**, langsung terlihat di layar kiosk:
 
-| Kelompok | ◀ / ▲ | ▶ / ▼ | ◎ |
+| Kelompok | ◀ / ▲ | ▶ / ▼ | Yang berubah |
 |---|---|---|---|
-| **Geser layar** | geser ke kiri / atas | geser ke kanan / bawah | kembali ke 0,0 |
-| **Ukur layar** | **perbesar** (+2%) | **perkecil** (−2%) | skala kembali 100% |
+| **Kiri** | ◀ panel kiri menyempit | ▶ panel kiri melebar | lebar panel kiri (20–60%) |
+| **Kanan** | ◀ DDMS melebar | ▶ DDMS menyempit | lebar DDMS (kebalikan panel kiri) |
+| **Atas** | ▲ sisi atas naik | ▼ sisi atas turun | tinggi panel kiri, sisi atas bergerak |
+| **Bawah** | ▲ sisi bawah turun | ▼ sisi bawah naik | tinggi panel kiri, sisi bawah bergerak |
 
-Jadi ◀ memperbesar dan ▶ memperkecil layar (▲/▼ sama: atas memperbesar, bawah
-memperkecil). Tekan **Simpan pas layar** agar nilainya dipakai setelah reboot.
+Tambahan:
+
+- **Geser layar ◀▶▲▼** untuk menggeser seluruh layar (koreksi overscan TV), 4 px/klik.
+- **◎ Normal** mengembalikan semuanya: lebar 30%, tinggi 100%, skala 100%, geser 0.
+- **Simpan pas layar** menyimpan permanen (`leftPercent`, `boxHeightPercent`,
+  `boxAnchor`, `scalePercent`, `offsetX/Y`); **Batal / kembali** membatalkan pratinjau.
+- Kalau tombol ditekan saat sudah di batas (20%/60% atau 40%/100%), muncul pesan
+  "Sudah di batas …" — jadi tidak terasa macet.
 
 ### Pratinjau realtime dari admin
 

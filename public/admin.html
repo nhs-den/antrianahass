@@ -507,48 +507,73 @@ npm start          # default port 3000</pre>
         </div>
 
         <div class="card">
-          <h3>Pas agar tidak terpotong (overscan TV)</h3>
+          <h3>Ukuran &amp; posisi panel (pas layar)</h3>
           <p class="muted small">
-            Kalau jam/tepi kanan terpotong di TV, pakai <b>Ukur layar</b> untuk memperkecil
-            lalu <b>Geser layar</b> untuk menggeser. Setiap klik <b>langsung</b> berlaku di
-            layar kiosk (realtime), tanpa restart.
-            Tekan <b>Simpan pas layar</b> agar nilai ini dipakai terus setelah reboot.
+            Empat kelompok tombol, masing-masing menggerakkan <b>sisinya sendiri</b>:
+            <b>Kiri ◀▶</b> dan <b>Kanan ◀▶</b> untuk lebar panel kiri / DDMS,
+            <b>Atas ▲▼</b> dan <b>Bawah ▲▼</b> untuk tinggi panel kiri.
+            Setiap klik <b>langsung</b> berlaku di layar kiosk (realtime), tanpa restart.
+            Butuh menggeser seluruh layar (overscan TV)? Pakai <b>Geser layar</b>.
+            Tekan <b>Simpan pas layar</b> agar nilai ini dipakai setelah reboot.
           </p>
 
           <div class="fit-controls">
             <div class="fit-pad">
-              <div class="fit-pad-label">Geser layar</div>
-              <div class="dpad" role="group" aria-label="Geser layar">
+              <div class="fit-pad-label">Kiri ◀▶</div>
+              <div class="dpad dpad-row">
+                <button class="btn ghost dpad-btn" type="button" data-edge="left-out" title="Kurangi lebar panel kiri (mepet ke kiri)">◀</button>
+                <button class="btn ghost dpad-btn" type="button" data-edge="left-in" title="Tambah lebar panel kiri (mepet ke kanan)">▶</button>
+              </div>
+              <small class="muted">◀ sempit · ▶ lebar</small>
+            </div>
+
+            <div class="fit-pad">
+              <div class="fit-pad-label">Kanan ◀▶</div>
+              <div class="dpad dpad-row">
+                <button class="btn ghost dpad-btn" type="button" data-edge="right-in" title="Tambah lebar DDMS (mepet ke kiri)">◀</button>
+                <button class="btn ghost dpad-btn" type="button" data-edge="right-out" title="Kurangi lebar DDMS (mepet ke kanan)">▶</button>
+              </div>
+              <small class="muted">◀ lebar · ▶ sempit</small>
+            </div>
+
+            <div class="fit-pad">
+              <div class="fit-pad-label">Atas ▲<br>▼</div>
+              <div class="dpad">
+                <button class="btn ghost dpad-btn" type="button" data-edge="top-in" title="Perbesar panel kiri (sisi atas mepet ke atas)">▲</button>
+                <button class="btn ghost dpad-btn" type="button" data-edge="top-out" title="Perkecil panel kiri (sisi atas mepet ke bawah)">▼</button>
+              </div>
+              <small class="muted">▲ besar · ▼ kecil</small>
+            </div>
+
+            <div class="fit-pad">
+              <div class="fit-pad-label">Bawah ▲<br>▼</div>
+              <div class="dpad">
+                <button class="btn ghost dpad-btn" type="button" data-edge="bottom-in" title="Perbesar panel kiri (sisi bawah mepet ke bawah)">▲</button>
+                <button class="btn ghost dpad-btn" type="button" data-edge="bottom-out" title="Perkecil panel kiri (sisi bawah mepet ke atas)">▼</button>
+              </div>
+              <small class="muted">▲ besar · ▼ kecil</small>
+            </div>
+
+            <div class="fit-pad">
+              <div class="fit-pad-label">Geser layar<br>(overscan) ◀▶</div>
+              <div class="dpad dpad-row">
+                <button class="btn ghost dpad-btn" type="button" data-move="left" title="Geser seluruh layar ke kiri">◀</button>
+                <button class="btn ghost dpad-btn" type="button" data-move="right" title="Geser seluruh layar ke kanan">▶</button>
+              </div>
+              <div class="dpad dpad-row">
                 <button class="btn ghost dpad-btn" type="button" data-move="up" title="Geser seluruh layar ke atas">▲</button>
-                <div class="dpad-mid">
-                  <button class="btn ghost dpad-btn" type="button" data-move="left" title="Geser seluruh layar ke kiri">◀</button>
-                  <button class="btn ghost dpad-btn" type="button" data-move="reset" title="Kembalikan geser ke 0,0 dan skala 100%">◎</button>
-                  <button class="btn ghost dpad-btn" type="button" data-move="right" title="Geser seluruh layar ke kanan">▶</button>
-                </div>
                 <button class="btn ghost dpad-btn" type="button" data-move="down" title="Geser seluruh layar ke bawah">▼</button>
               </div>
               <small class="muted">1 klik = 4 px</small>
             </div>
 
-            <div class="fit-pad">
-              <div class="fit-pad-label">Ukur layar</div>
-              <div class="dpad" role="group" aria-label="Ukur layar">
-                <button class="btn ghost dpad-btn" type="button" data-zoom="in-y" title="Perbesar layar (vertikal)">▲</button>
-                <div class="dpad-mid">
-                  <button class="btn ghost dpad-btn" type="button" data-zoom="in" title="◀ Perbesar layar">◀</button>
-                  <button class="btn ghost dpad-btn" type="button" data-zoom="reset" title="Kembalikan skala ke 100%">◎</button>
-                  <button class="btn ghost dpad-btn" type="button" data-zoom="out" title="▶ Perkecil layar">▶</button>
-                </div>
-                <button class="btn ghost dpad-btn" type="button" data-zoom="out-y" title="Perkecil layar (vertikal)">▼</button>
-              </div>
-              <small class="muted">◀ perbesar · ▶ perkecil</small>
-            </div>
-
             <div class="fit-readout">
+              <div>Panel kiri: <b id="boxSizeValue">30% × 100%</b></div>
               <div>Geser X: <b id="offsetXValue">0</b> px · Y: <b id="offsetYValue">0</b> px</div>
               <div>Skala: <b id="scaleValue">100%</b></div>
-              <small class="muted">Tombol ◎ mengembalikan ke 0,0 dan skala 100%.</small>
+              <small class="muted">◎ = semua kembali normal (100%, tanpa geser).</small>
               <div class="fit-actions">
+                <button class="btn ghost" id="fitResetBtn" type="button">◎ Normal</button>
                 <button class="btn primary" id="fitSaveBtn" type="button">Simpan pas layar</button>
                 <button class="btn ghost" id="fitCancelBtn" type="button">Batal / kembali</button>
               </div>

@@ -218,7 +218,11 @@
     return {
       scalePercent: clampNum(d.scalePercent, 50, 100, 100),
       offsetX: clampNum(d.offsetX, -200, 200, 0),
-      offsetY: clampNum(d.offsetY, -200, 200, 0)
+      offsetY: clampNum(d.offsetY, -200, 200, 0),
+      // tinggi panel kiri (persen). 100 = memenuhi tinggi layar seperti biasa.
+      boxHeightPercent: clampNum(d.boxHeightPercent, 40, 100, 100),
+      // sisi yang tetap: 'top' (bawah bergeser) atau 'bottom' (atas bergeser)
+      boxAnchor: d.boxAnchor === 'bottom' ? 'bottom' : 'top'
     };
   }
 
@@ -243,6 +247,8 @@
   function syncFitInputs() {
     var fit = state.fit || readFit(null);
     $('scaleValue').textContent = fit.scalePercent + '%';
+    var left = Number($('dLeft').value) || (state.cfg && state.cfg.display && state.cfg.display.leftPercent) || 30;
+    $('boxSizeValue').textContent = Math.round(left) + '% × ' + Math.round(fit.boxHeightPercent || 100) + '%';
     $('offsetXValue').textContent = fit.offsetX;
     $('offsetYValue').textContent = fit.offsetY;
   }
@@ -266,6 +272,8 @@
     var payload = {
       display: {
         leftPercent: left,
+        boxHeightPercent: fit.boxHeightPercent,
+        boxAnchor: fit.boxAnchor,
         scalePercent: fit.scalePercent,
         offsetX: fit.offsetX,
         offsetY: fit.offsetY
@@ -302,6 +310,8 @@
   function previewFit() {
     var fit = state.fit;
     var root = document.documentElement.style;
+    root.setProperty('--panel-h', (fit.boxHeightPercent || 100) + '%');
+    root.setProperty('--panel-anchor', fit.boxAnchor === 'bottom' ? 'end' : 'start');
     root.setProperty('--screen-scale', String(fit.scalePercent / 100));
     root.setProperty('--screen-x', fit.offsetX + 'px');
     root.setProperty('--screen-y', fit.offsetY + 'px');
@@ -316,22 +326,76 @@
     state.fit = {
       scalePercent: clampNum(fit.scalePercent + delta, 50, 100, 100),
       offsetX: fit.offsetX,
-      offsetY: fit.offsetY
+      offsetY: fit.offsetY,
+      boxHeightPercent: fit.boxHeightPercent,
+      boxAnchor: fit.boxAnchor
     };
     syncFitInputs();
     previewFit();
   }
 
+  /**
+   * Tombol per sisi: mengubah sisi panel kiri / DDMS.
+   *
+   *  left-in / left-out    -> lebar panel kiri (kiri mepet ke kanan / ke kiri)
+   *  right-in / right-out  -> lebar DDMS  (kanan mepet ke kiri / ke kanan)
+   *  top-in / top-out      -> tinggi panel kiri, sisi atas mepet atas / bawah
+   *  bottom-in / bottom-out-> tinggi panel kiri, sisi bawah mepet bawah / atas
+   *
+   * "in" = sisi itu masuk/membesar, "out" = sisi itu keluar/mengecil.
+   */
+  function adjustEdge(action) {
+    var fit = state.fit || readFit(null);
+    var left = clampNum(Number($('dLeft').value) || 30, 20, 60, 30);
+    var height = clampNum(fit.boxHeightPercent, 40, 100, 100);
+    var step = 1;   // 1% per klik
+
+    var before = { left: left, height: height };
+
+    if (action === 'left-in') left = clampNum(left + step, 20, 60, 30);
+    else if (action === 'left-out') left = clampNum(left - step, 20, 60, 30);
+    else if (action === 'right-in') left = clampNum(left - step, 20, 60, 30);
+    else if (action === 'right-out') left = clampNum(left + step, 20, 60, 30);
+    else if (action === 'top-in' || action === 'bottom-in') height = clampNum(height + step, 40, 100, 100);
+    else if (action === 'top-out' || action === 'bottom-out') height = clampNum(height - step, 40, 100, 100);
+
+    // Sisi atas yang bergeser -> panel menempel di bawah; sebaliknya menempel di atas.
+    var anchor = fit.boxAnchor;
+    if (action.indexOf('top-') === 0) anchor = 'bottom';
+    else if (action.indexOf('bottom-') === 0) anchor = 'top';
+
+    $('dLeft').value = left;
+    $('leftValue').textContent = left + '%';
+    state.fit = {
+      scalePercent: fit.scalePercent,
+      offsetX: fit.offsetX,
+      offsetY: fit.offsetY,
+      boxHeightPercent: height,
+      boxAnchor: anchor
+    };
+    syncFitInputs();
+    previewFit();
+
+    // Beri tahu kalau sudah di batas, supaya tombol tidak terasa "tidak jalan".
+    if (before.left === left && before.height === height) {
+      var limit = action.indexOf('in') > -1 ? 'maksimum' : 'minimum';
+      toast('Sudah di batas ' + limit + ' (' + left + '% / ' + height + '%).', 'ok');
+    }
+  }
+
   function moveFit(dx, dy) {
     var fit = state.fit || readFit(null);
     if (dx === 0 && dy === 0) {
-      // ◎ = mulai ulang: geser 0,0 dan skala 100%
-      state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0 };
+      // ◎ = mulai ulang: geser 0,0 dan skala 100% (tinggi panel tetap)
+      state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0,
+        boxHeightPercent: fit.boxHeightPercent, boxAnchor: fit.boxAnchor };
     } else {
       state.fit = {
         scalePercent: fit.scalePercent,
         offsetX: clampNum(fit.offsetX + dx, -200, 200, 0),
-        offsetY: clampNum(fit.offsetY + dy, -200, 200, 0)
+        offsetY: clampNum(fit.offsetY + dy, -200, 200, 0),
+        boxHeightPercent: fit.boxHeightPercent,
+        boxAnchor: fit.boxAnchor
       };
     }
     syncFitInputs();
@@ -407,6 +471,8 @@
     return {
       display: {
         leftPercent: Number($('dLeft').value),
+        boxHeightPercent: (state.fit && state.fit.boxHeightPercent) || 100,
+        boxAnchor: (state.fit && state.fit.boxAnchor) || 'top',
         scalePercent: state.fit ? state.fit.scalePercent : 100,
         offsetX: state.fit ? state.fit.offsetX : 0,
         offsetY: state.fit ? state.fit.offsetY : 0,
@@ -891,6 +957,24 @@
         }
         pushPreview(false);
       });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-edge]'), function (btn) {
+      btn.addEventListener('click', function () {
+        adjustEdge(btn.getAttribute('data-edge'));
+        pushPreview(false);
+      });
+    });
+
+    $('fitResetBtn').addEventListener('click', function () {
+      var fit = state.fit || readFit(null);
+      state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0, boxHeightPercent: 100, boxAnchor: 'top' };
+      $('dLeft').value = 30;
+      $('leftValue').textContent = '30%';
+      syncFitInputs();
+      previewFit();
+      pushPreview(true);
+      toast('Ukuran & geser dikembalikan ke normal (30% / 100%).', 'ok');
     });
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-move]'), function (btn) {

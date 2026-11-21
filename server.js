@@ -117,6 +117,8 @@ function buildPatch(body) {
     const d = src.display;
     patch.display = {
       leftPercent: clampInt(d.leftPercent, 20, 60, 30),
+      boxHeightPercent: clampInt(d.boxHeightPercent, 40, 100, 100),
+      boxAnchor: d.boxAnchor === 'bottom' ? 'bottom' : 'top',
       scalePercent: clampInt(d.scalePercent, 50, 100, 100),
       offsetX: clampInt(d.offsetX, -200, 200, 0),
       offsetY: clampInt(d.offsetY, -200, 200, 0),
@@ -468,6 +470,10 @@ async function handleApi(req, res, url) {
     };
     const payload = {
       leftPercent: positive(d.leftPercent, 20, 60, cur.leftPercent || 30),
+      boxHeightPercent: positive(d.boxHeightPercent, 40, 100, cur.boxHeightPercent || 100),
+      boxAnchor: d.boxAnchor === 'bottom' || d.boxAnchor === 'top'
+        ? d.boxAnchor
+        : (cur.boxAnchor || 'top'),
       scalePercent: positive(d.scalePercent, 50, 100, 100),
       offsetX: clampInt(d.offsetX, -200, 200, 0),
       offsetY: clampInt(d.offsetY, -200, 200, 0),

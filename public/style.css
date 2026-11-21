@@ -23,6 +23,12 @@
   --screen-scale: 1;
   --screen-x: 0px;
   --screen-y: 0px;
+  /* Tinggi panel kiri (persen). 100 = memenuhi tinggi layar.
+     --panel-anchor menentukan sisi mana yang tetap: 'top' = sisi atas tetap
+     (sisi bawah yang bergeser), 'bottom' = sisi bawah tetap (sisi atas yang
+     bergeser). Diatur dari tombol Atas/Bawah di admin. */
+  --panel-h: 100%;
+  --panel-anchor: start;
   color-scheme: dark;
 }
 
@@ -63,6 +69,7 @@ img { display: block; }
   transform-origin: 0 0;
   display: grid;
   grid-template-columns: var(--left) minmax(0, 1fr);
+  align-items: start;   /* panel kiri tidak dipaksa setinggi layar */
   gap: var(--gap);
   padding: var(--shell-pad);
 }
@@ -76,8 +83,11 @@ img { display: block; }
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-  min-height: 0;
   min-width: 0;
+  /* Tinggi panel kiri bisa diatur dari admin; 100% = seperti biasa. */
+  height: var(--panel-h);
+  max-height: var(--panel-h);
+  align-self: var(--panel-anchor, start);
 }
 
 .box {
@@ -86,6 +96,7 @@ img { display: block; }
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  flex: 1 1 auto;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);

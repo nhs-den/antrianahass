@@ -598,10 +598,15 @@
     scale = Math.min(100, Math.max(50, scale)) / 100;
     var x = Number(d.offsetX) || 0;
     var y = Number(d.offsetY) || 0;
+    var h = Number(d.boxHeightPercent);
+    if (!isFinite(h) || h <= 0) h = 100;
+    h = Math.min(100, Math.max(40, h));
     var root = document.documentElement.style;
     root.setProperty('--screen-scale', String(scale));
     root.setProperty('--screen-x', x + 'px');
     root.setProperty('--screen-y', y + 'px');
+    root.setProperty('--panel-h', h + '%');
+    root.setProperty('--panel-anchor', d.boxAnchor === 'bottom' ? 'end' : 'start');
   }
 
   /**

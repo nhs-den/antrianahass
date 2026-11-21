@@ -211,6 +211,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 }
 
 .dpad { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.dpad-row { flex-direction: row; }
 .dpad-mid { display: flex; gap: 6px; }
 .dpad-btn {
   width: 46px;
