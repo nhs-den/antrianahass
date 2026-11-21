@@ -184,19 +184,20 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data || !data.ok) return;
+        renderPanelAddr(data.ips, data.port);
         var ddms = data.ddms || {};
         var now = Date.now();
         if (ddms.lastOkAt && now - ddms.lastOkAt < 5 * 60 * 1000) {
           if (!ddms.lastErrorAt || ddms.lastOkAt > ddms.lastErrorAt) {
-            setStatus('ok', 'DDMS terhubung');
+            setStatus('ok', 'Antrian Terhubung');
             return;
           }
         }
         if (ddms.lastErrorAt && (!ddms.lastOkAt || ddms.lastErrorAt > ddms.lastOkAt)) {
-          setStatus('err', 'DDMS terputus');
+          setStatus('err', 'Antrian Terputus');
           return;
         }
-        setStatus('', 'DDMS menunggu');
+        setStatus('', 'Antrian Menunggu');
       })
       .catch(function () { setStatus('warn', 'Server lokal offline'); });
   }
@@ -505,7 +506,7 @@
     if (!cfg.ddms.enabled) {
       overlay.hidden = false;
       frame.src = 'about:blank';
-      setStatus('warn', 'DDMS nonaktif');
+      setStatus('warn', 'Antrian nonaktif');
       return;
     }
     overlay.hidden = true;
@@ -531,15 +532,15 @@
     frame.addEventListener('load', function () {
       if (!state.cfg || !state.cfg.ddms.enabled) return;
       if (!/^about:/.test(frame.getAttribute('src') || '')) {
-        setStatus('ok', 'DDMS terhubung');
+        setStatus('ok', 'Antrian Terhubung');
         state.frameLoadedAt = Date.now();
       }
     });
     window.addEventListener('message', function (event) {
       var data = event.data;
       if (!data || data.type !== 'ahass-ddms-status') return;
-      if (data.ok) setStatus('ok', 'DDMS terhubung');
-      else setStatus('err', 'DDMS terputus');
+      if (data.ok) setStatus('ok', 'Antrian Terhubung');
+      else setStatus('err', 'Antrian Terputus');
     });
   }
 
@@ -573,6 +574,22 @@
    * Terapkan skala + geser panel (koreksi overscan TV).
    * Nilai diatur di admin: skala 50-100%, geser -200..200 piksel.
    */
+  /** Simpan daftar alamat LAN dari /health, lalu tampilkan di bawah status. */
+  function renderPanelAddr(ips, port) {
+    var el = $('panelAddr');
+    if (!el) return;
+    var list = Array.isArray(ips) ? ips.filter(Boolean) : [];
+    if (!list.length) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    var p = Number(port) || 8080;
+    el.textContent = list.map(function (ip) { return ip + ':' + p; }).join('  ·  ');
+    el.title = 'Alamat panel: ' + list.map(function (ip) { return 'http://' + ip + ':' + p + '/'; }).join('  ');
+    el.hidden = false;
+  }
+
   function applyScreenFit(display) {
     var d = display || {};
     var scale = Number(d.scalePercent);
@@ -584,6 +601,17 @@
     root.setProperty('--screen-scale', String(scale));
     root.setProperty('--screen-x', x + 'px');
     root.setProperty('--screen-y', y + 'px');
+  }
+
+  /**
+   * Terapkan nilai pratinjau (dari admin) tanpa menyimpan konfigurasi.
+   * Dipakai untuk geser/skala realtime saat tombol di halaman admin ditekan.
+   */
+  function applyPreview(d) {
+    if (!state.cfg || !d) return;
+    document.documentElement.style.setProperty('--left', (d.leftPercent || 30) + '%');
+    applyScreenFit(d);
+    setStatus('warn', 'Pratinjau dari admin');
   }
 
   function loadConfig() {
@@ -610,6 +638,17 @@
       var data;
       try { data = JSON.parse(event.data); } catch (_e) { return; }
       if (data.type === 'config') loadConfig();
+
+      // Pratinjau langsung dari admin: ubah tampilan sekarang juga, tanpa
+      // menyimpan. Saat admin berhenti (display null) kembali ke config tersimpan.
+      if (data.type === 'display-preview') {
+        if (data.display) {
+          applyPreview(data.display);
+        } else if (state.cfg) {
+          applyConfig(state.cfg);
+          setStatus('warn', 'Pratinjau dihentikan');
+        }
+      }
     };
     source.onerror = function () {
       source.close();

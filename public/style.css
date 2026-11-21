@@ -178,6 +178,19 @@ img { display: block; }
 .status-pill.is-err { color: #fda4af; border-color: rgba(244,63,94,.4); }
 .status-pill.is-err i { background: var(--accent); }
 
+.panel-addr {
+  margin-top: clamp(2px, 0.4vh, 5px);
+  font-size: clamp(8px, 1.02vh, 11px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #7f93a8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+:root[data-theme="light"] .panel-addr { color: #5b7085; }
+
 .brand-mini {
   font-size: clamp(9px, 1.1vh, 12px);
   font-weight: 800;

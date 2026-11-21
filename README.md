@@ -180,7 +180,7 @@ melalui menu **Keamanan**.
 | **Kotak 4 · Gambar** | Tambah / hapus / urutkan gambar |
 | **Kotak 5 · Video** | Tambah / hapus / urutkan video |
 | **Tampilan** | Lebar panel kiri (20–60%), jeda rotasi, tema, format jam, sembunyikan kursor |
-| **Tampilan → Pas layar** | Skala panel 50–100% + tombol geser ◀▶▲▼ (4 px/klik) untuk mengoreksi overscan TV |
+| **Tampilan → Pas layar** | Skala panel 50–100% + tombol geser ◀▶▲▼ (4 px/klik), **realtime**: layar kiosk bergeser saat tombol ditekan; tombol Batal mengembalikan |
 | **Tampilan → Resolusi** | Set mode HDMI dari admin (Pi): 1080p/720p/1360x768/1600x900… lalu reboot otomatis |
 | **Keamanan** | Ganti password admin |
 
@@ -349,6 +349,22 @@ Cukup tempel link — jenis media dikenali otomatis:
 - Panel hanya memuat satu iframe aktif; iframe lama dilepas dari DOM sehingga
   CPU tidak terbebani banyak video sekaligus.
 - Tombol ↑ ↓ untuk mengatur urutan, ✕ untuk menghapus.
+
+---
+
+### Alamat panel di layar
+
+Di bawah tulisan status (**Antrian Terhubung**) kini tampil alamat IP perangkat,
+mis. `200.100.100.111:8080`. Itu alamat yang dipakai STB/PC lain untuk membuka
+panel; diambil dari `/__ahass/api/health` sehingga otomatis berubah bila IP
+berubah (DHCP).
+
+### Pratinjau realtime dari admin
+
+Setiap penekanan tombol geser/skala di **Tampilan → Pas layar** langsung dikirim
+ke layar kiosk lewat SSE `display-preview` — layar bergeser seketika, tanpa
+restart dan tanpa menyimpan. Tekan **Simpan pas layar** untuk menyimpan permanen,
+atau **Batal / kembali** untuk mengembalikan ke nilai tersimpan.
 
 ---
 

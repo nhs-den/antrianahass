@@ -255,6 +255,50 @@
             </div>
           </div>
 
+
+          <div class="card helper-card">
+            <h3>Cara mendapatkan kode ulasan Google</h3>
+            <p class="muted small">
+              Aplikasi ini menampilkan widget dari proyek
+              <code>ulasan-google</code> (bukan langsung dari Google), karena API resmi Google
+              hanya memberi ulasan lewat <i>Places API</i> yang berbayar.
+            </p>
+
+            <ol class="helper-steps">
+              <li>
+                <b>Jalankan service ulasan</b> di perangkat yang menyala terus (boleh PC yang sama
+                dengan panel). Repo: <code>nhs-den/ulasan-google</code>.
+                <pre class="code-block">npm install
+npm start          # default port 3000</pre>
+              </li>
+              <li>
+                <b>Uji di browser</b>: buka <code>http://IP-SERVICE:3000/</code>.
+                Kalau widget ulasan tampil, service siap dipakai.
+              </li>
+              <li>
+                <b>Ambil kode embed</b> dari service itu (biasanya di halaman
+                <code>/embed</code> atau tombol “Embed”). Bentuknya seperti ini:
+                <pre class="code-block">&lt;script&gt;(function(){var p=document.currentScript.parentNode;
+  /* … memuat loader.js?kiosk=1 … */}());&lt;/script&gt;</pre>
+                <small>Tempel <b>apa adanya</b> di kolom “Kode embed” di atas.</small>
+              </li>
+              <li>
+                <b>Isi manual (tanpa kode embed)</b> — cukup tiga kolom di atas:
+                Port <code>3000</code>, Path <code>/loader.js</code>, Query <code>kiosk=1</code>,
+                dan <b>Host</b> = IP komputer tempat service berjalan
+                (biarkan kosong bila service ada di perangkat yang sama dengan panel).
+              </li>
+              <li>
+                Tekan <b>Simpan</b>, lalu <b>Buka pratinjau widget</b> untuk memastikan tampilannya.
+              </li>
+            </ol>
+
+            <p class="muted small">
+              Kalau service berjalan di PC lain, jangan lupa buka port 3000 di firewall PC itu.
+              Uji dari perangkat ini:
+              <code>curl -s http://IP-PC:3000/loader.js?kiosk=1 | head -3</code>
+            </p>
+          </div>
           <div data-mode="ulasan">
             <label class="field">
               <span>URL JSON ulasan</span>
@@ -405,7 +449,8 @@
           <h3>Pas agar tidak terpotong (overscan TV)</h3>
           <p class="muted small">
             Kalau jam/tepi kanan terpotong di TV, perkecil skala lalu geser dengan tombol.
-            Perubahan langsung terlihat di layar, tanpa restart.
+            Setiap klik <b>langsung</b> menggeser layar kiosk (realtime), tanpa restart.
+            Tekan <b>Simpan pas layar</b> agar nilai ini dipakai terus setelah reboot.
           </p>
 
           <label class="field">
@@ -428,7 +473,10 @@
               <div>Geser X: <b id="offsetXValue">0</b> px</div>
               <div>Geser Y: <b id="offsetYValue">0</b> px</div>
               <small class="muted">1 klik = 4 px. Tombol ◎ mengembalikan ke 0,0.</small>
-              <button class="btn primary" id="fitSaveBtn" type="button">Simpan pas layar</button>
+              <div class="fit-actions">
+                <button class="btn primary" id="fitSaveBtn" type="button">Simpan pas layar</button>
+                <button class="btn ghost" id="fitCancelBtn" type="button">Batal / kembali</button>
+              </div>
             </div>
           </div>
         </div>

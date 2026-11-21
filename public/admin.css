@@ -225,6 +225,25 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 .dpad-btn:active { transform: translateY(1px); }
 
 .fit-readout { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.fit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+/* ------------------------- kartu bantuan (helper) ---------------------- */
+
+.helper-card { border-left: 3px solid var(--accent, #e11d48); }
+.helper-steps { margin: 10px 0 6px; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+.helper-steps li { font-size: 13px; line-height: 1.5; }
+.helper-steps small { color: var(--muted, #8ea3b9); }
+.code-block {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid rgba(127, 127, 127, 0.22);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre;
+}
 .fit-readout b { color: var(--accent-2, #ff4d6d); }
 
 @media (max-width: 560px) {

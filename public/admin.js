@@ -218,6 +218,24 @@
     };
   }
 
+  /** Hentikan pratinjau bila admin ditutup, lalu layar kembali normal. */
+  function guardPreviewExit() {
+    window.addEventListener('beforeunload', function () {
+      // sendBeacon tidak bisa DELETE; cukup kirim sinyal lewat unload biasa
+      // dengan fetch keepalive pada browser modern.
+      try {
+        fetch('/__ahass/api/admin/display/preview', {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          keepalive: true
+        });
+      } catch (_e) { /* abaikan */ }
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stopPreview();
+    });
+  }
+
   function syncFitInputs() {
     var fit = state.fit || readFit(null);
     $('dScale').value = fit.scalePercent;
@@ -230,6 +248,54 @@
    * Pratinjau langsung di tab ini (tanpa server): atur variabel CSS yang
    * dipakai .shell di public/style.css.
    */
+  var previewTimer = null;
+  var previewPending = false;
+
+  /** Kirim nilai sekarang ke layar kiosk (maks ~6x per detik). */
+  function pushPreview(immediate) {
+    var fit = state.fit || readFit(null);
+    // Slider bisa belum terisi (fillForm belum jalan) — jangan kirim 0, karena
+    // server akan menjepitnya ke 20% dan panel kiri tiba-tiba menyempit.
+    var left = Number($('dLeft').value);
+    if (!isFinite(left) || left <= 0) {
+      left = (state.cfg && state.cfg.display && state.cfg.display.leftPercent) || 30;
+    }
+    var payload = {
+      display: {
+        leftPercent: left,
+        scalePercent: fit.scalePercent,
+        offsetX: fit.offsetX,
+        offsetY: fit.offsetY
+      }
+    };
+
+    var send = function () {
+      previewPending = false;
+      api('admin/display/preview', { method: 'POST', body: payload }).catch(function () {
+        /* pratinjau bersifat opsional; jangan ganggu pengguna */
+      });
+    };
+
+    if (immediate) {
+      if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
+      send();
+      return;
+    }
+    if (previewTimer) { previewPending = true; return; }
+    send();
+    previewTimer = setTimeout(function () {
+      previewTimer = null;
+      if (previewPending) pushPreview(false);
+    }, 160);
+  }
+
+  /** Kembalikan layar ke nilai yang tersimpan. */
+  function stopPreview() {
+    if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
+    previewPending = false;
+    api('admin/display/preview', { method: 'DELETE' }).catch(function () {});
+  }
+
   function previewFit() {
     var fit = state.fit;
     var root = document.documentElement.style;
@@ -704,7 +770,9 @@
     });
     $('dLeft').addEventListener('input', function () {
       $('leftValue').textContent = this.value + '%';
+      pushPreview(false);
     });
+    $('dLeft').addEventListener('change', function () { pushPreview(true); });
 
     // Pas layar: skala + tombol geser
     $('dScale').addEventListener('input', function () {
@@ -712,8 +780,14 @@
       state.fit.scalePercent = clampNum(this.value, 50, 100, 100);
       syncFitInputs();
       previewFit();
+      pushPreview(false);
     });
+    $('dScale').addEventListener('change', function () { pushPreview(true); });
     $('fitSaveBtn').addEventListener('click', function () { save(); });
+    $('fitCancelBtn').addEventListener('click', function () {
+      stopPreview();
+      toast('Pratinjau dibatalkan, layar kembali ke setelan tersimpan.', 'ok');
+    });
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-move]'), function (btn) {
       btn.addEventListener('click', function () {
@@ -724,12 +798,14 @@
           case 'right': moveFit(4, 0); break;
           default: moveFit(0, 0); break;   // reset
         }
+        pushPreview(false);
       });
     });
 
     // Resolusi layar
     $('resApplyBtn').addEventListener('click', applyResolution);
     loadScreenInfo();
+    guardPreviewExit();
     $('giAdd').addEventListener('click', function () { addItem('images'); });
     $('gvAdd').addEventListener('click', function () { addItem('videos'); });
     [$('giUrl'), $('gvUrl')].forEach(function (input) {

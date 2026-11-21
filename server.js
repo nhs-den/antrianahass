@@ -30,6 +30,32 @@ const STARTED_AT = Date.now();
 
 const sseClients = new Set();
 
+/**
+ * Alamat IPv4 yang bisa dipakai perangkat lain (STB/PC) untuk membuka panel.
+ * Loopback & link-local dibuang; alamat dari antarmuka yang sedang terhubung
+ * ke jaringan diurutkan lebih dulu supaya yang tampil adalah yang berguna.
+ */
+function lanAddresses() {
+  const out = [];
+  try {
+    const ifaces = os.networkInterfaces();
+    for (const [name, list] of Object.entries(ifaces)) {
+      for (const addr of list || []) {
+        if (addr.family !== 'IPv4' && addr.family !== 4) continue;
+        if (addr.internal) continue;
+        if (String(addr.address).startsWith('169.254.')) continue;
+        out.push({ iface: name, address: addr.address });
+      }
+    }
+  } catch (_err) { /* abaikan */ }
+  return out;
+}
+
+/** Alamat tampilan yang dipakai STB (untuk baris status di layar). */
+function displayAddresses() {
+  return lanAddresses().map((a) => a.address);
+}
+
 function broadcast(event) {
   const payload = 'data: ' + JSON.stringify(event) + '\n\n';
   for (const res of sseClients) {
@@ -204,6 +230,8 @@ async function handleApi(req, res, url) {
       uptimeSeconds: Math.round((Date.now() - STARTED_AT) / 1000),
       memoryMB: Math.round(process.memoryUsage().rss / 1048576),
       ddms: proxy.proxyStatus(),
+      ips: displayAddresses(),
+      port: PORT,
       authed: auth.isAuthed(req)
     });
     return;
@@ -356,6 +384,40 @@ async function handleApi(req, res, url) {
 
   if (p === '/__ahass/api/admin/reviews/clear-cache' && method === 'POST') {
     reviews.clearCache();
+    util.sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  // Pratinjau langsung dari halaman admin ke layar kiosk (realtime).
+  // Tidak disimpan ke config.json - hanya disiarkan lewat SSE beberapa saat
+  // agar pengguna bisa menggeser/menskalakan sambil melihat hasilnya.
+  if (p === '/__ahass/api/admin/display/preview' && method === 'POST') {
+    const body = await util.readJson(req, 4 * 1024);
+    const d = (body && body.display) || body || {};
+    const cur = config.get().display;
+    // Nilai yang tidak masuk akal (0/kosong) harus kembali ke setelan tersimpan,
+    // bukan dijepit ke batas minimum - itu akan mengubah layar tanpa diminta.
+    const positive = (value, min, max, fallback) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return fallback;
+      return Math.max(min, Math.min(max, Math.round(n)));
+    };
+    const payload = {
+      leftPercent: positive(d.leftPercent, 20, 60, cur.leftPercent || 30),
+      scalePercent: positive(d.scalePercent, 50, 100, 100),
+      offsetX: clampInt(d.offsetX, -200, 200, 0),
+      offsetY: clampInt(d.offsetY, -200, 200, 0),
+      live: true
+    };
+    broadcast({ type: 'display-preview', display: payload, at: Date.now() });
+    util.sendJson(res, 200, { ok: true, display: payload });
+    return;
+  }
+
+  // Kembalikan layar ke nilai yang tersimpan (dipakai saat slider dilepas,
+  // panel admin ditutup, atau tombol Batal ditekan).
+  if (p === '/__ahass/api/admin/display/preview' && method === 'DELETE') {
+    broadcast({ type: 'display-preview', display: null, live: false, at: Date.now() });
     util.sendJson(res, 200, { ok: true });
     return;
   }
