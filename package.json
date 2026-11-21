@@ -1,6 +1,6 @@
 {
   "name": "antrianahass",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Panel display AHASS Munjul Motor - DDMS (70%) + 5 kotak informasi (30%) untuk Intel Compute Stick / DietPi",
   "main": "server.js",

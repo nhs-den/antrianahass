@@ -569,6 +569,22 @@ sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
   repo privat unduh ZIP lewat browser (tombol **Code → Download ZIP**) lalu
   unggah ke perangkat (`scp`/flashdisk).
 
+### Ambil kode terbaru lalu pasang (satu perintah)
+
+Bila `/opt/antrianahass` sudah terhapus atau bukan repo git, **tidak perlu**
+`git clone` manual. Cukup dari folder mana pun yang masih punya repo ini:
+
+```bash
+sudo bash /opt/antrianahass/deploy/reinstall-from-github.sh
+# atau, bila /opt kosong, jalankan dari ZIP/hasil clone sementara:
+sudo bash ~/antrianahass/deploy/reinstall-from-github.sh --branch main
+```
+
+Skrip ini: mengambil kode branch terbaru dengan token `gh` (root sudah login),
+menyalin ke `/opt/antrianahass`, menjalankan `raspberry/install.sh --no-deps`,
+lalu me-restart `ahass-panel` + `ahass-kiosk`. Data di `/var/lib/antrianahass`
+tidak disentuh, dan token tidak ditinggalkan di `.git/config`.
+
 ### Memulihkan setelah `/opt/antrianahass` terhapus
 
 Data di `/var/lib/antrianahass` (config, password admin, logo) **tidak ikut terhapus**.
