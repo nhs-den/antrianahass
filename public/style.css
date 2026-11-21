@@ -74,7 +74,10 @@ img { display: block; }
   transform-origin: 0 0;
   display: grid;
   grid-template-columns: var(--left) minmax(0, 1fr);
-  align-items: start;   /* panel kiri tidak dipaksa setinggi layar */
+  grid-template-rows: minmax(0, 1fr);
+  /* WAJIB stretch. Bila 'start', baris grid setinggi isi panel kiri dan kotak
+     DDMS (yang tingginya 100% dari baris) runtuh jadi 0 px -> layar hitam. */
+  align-items: stretch;
   gap: var(--gap);
   padding: var(--shell-pad);
 }
@@ -89,10 +92,12 @@ img { display: block; }
   flex-direction: column;
   gap: var(--gap);
   min-width: 0;
-  /* Tinggi panel kiri bisa diatur dari admin; 100% = seperti biasa. */
-  height: var(--panel-h);
-  max-height: var(--panel-h);
-  align-self: var(--panel-anchor, start);
+  /* Panel kiri mengisi tinggi baris; kotak-kotaknya memakai flex supaya tetap
+     rata atas dan tidak melar aneh. */
+  height: 100%;
+  max-height: 100%;
+  align-self: stretch;
+  justify-content: flex-start;
 }
 
 .box {
@@ -441,15 +446,36 @@ img { display: block; }
   position: relative;
   min-width: 0;
   min-height: 0;
+  /* Wajib 'stretch': kalau 'start', kotak DDMS tingginya 0 lalu terlihat hitam. */
+  align-self: stretch;
+  /* Warna sama dengan kartu panel: layar kosong tidak lagi tampak "blank hitam",
+     jadi mudah dibedakan dari DDMS yang benar-benar gelap. */
   border-radius: var(--radius);
   overflow: hidden;
-  background: #0a0f15;
+  background: var(--box);
   border: 1px solid var(--line);
+  outline: 1px dashed rgba(142, 163, 185, 0.18);
+  outline-offset: -4px;
 }
 
 /* Isi DDMS dibungkus .stage-inner supaya bisa diskalakan/digeser TANPA
    mengubah ukuran kotak .stage (supaya tidak pernah "terpotong" karena
    transform: scale pada wadah yang memakai tinggi 100%). */
+/* Teks di belakang iframe: bila DDMS belum/tidak termuat, area kanan tidak
+   pernah tampil sebagai kotak hitam kosong tanpa keterangan. */
+.stage-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: clamp(12px, 1.5vh, 16px);
+  line-height: 1.5;
+}
+
 .stage-inner {
   position: absolute;
   inset: 0;
@@ -473,6 +499,7 @@ img { display: block; }
    oleh browser versi lama. */
 .ddms-frame {
   position: absolute;
+  background: transparent;
   top: 0;
   left: 0;
   width: 100%;

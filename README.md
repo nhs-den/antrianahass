@@ -426,6 +426,16 @@ kiosk tidak ikut berubah, ada baris **“Layar kiosk: terhubung”** di kartu ya
 sama — kalau tertulis *tidak terhubung*, jalankan
 `sudo systemctl restart ahass-kiosk`.
 
+### Layar DDMS hitam / kosong (riwayat & penyebab)
+
+**Penyebab yang sudah diperbaiki di 1.4.3:** grid utama memakai
+`align-items: start`, sehingga baris grid hanya setinggi isi panel kiri dan
+kotak DDMS (yang tingginya mengikuti baris) runtuh menjadi 0 px — persis
+tampilan "kotak kanan hitam kosong". Sekarang grid memakai `align-items:
+stretch` + `grid-template-rows: minmax(0, 1fr)`, kotak DDMS punya latar
+berwarna kartu, `iframe` selalu absolut 100%, dan ada tulisan status di area
+DDMS (bukan hitam polos lagi).
+
 ### Layar DDMS hitam / kosong
 
 Urutan pemeriksaan (dari layar ke server):

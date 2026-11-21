@@ -596,53 +596,75 @@
    * Tampilkan penjelasan di atas layar DDMS bila isinya kosong/hitam, supaya
    * tidak menebak-nebak: status proxy, ukuran iframe, dan saran tindakan.
    */
-  function showStageHint(text) {
+  function setStageFallback(text) {
+    var el = $('stageFallback');
+    if (el) el.textContent = text || '';
+  }
+
+  function showStageHint(judul, text) {
     var ov = $('stageOverlay');
     if (!ov) return;
     if (!text) { ov.hidden = true; ov.innerHTML = ''; return; }
-    ov.innerHTML = '<div class="overlay-card"><strong>Layar DDMS kosong</strong><span></span></div>';
+    ov.innerHTML = '<div class="overlay-card"><strong></strong><span></span></div>';
+    ov.querySelector('strong').textContent = judul;
     ov.querySelector('span').textContent = text;
     ov.hidden = false;
   }
 
+  /**
+   * Periksa apakah halaman DDMS benar-benar kosong. Bila kosong:
+   *  - muat ulang otomatis (maksimal 3x, jeda 20 s) karena DDMS kadang
+   *    mengirim halaman kosong pada permintaan pertama (302 -> halaman login),
+   *  - tampilkan keterangan di layar supaya tidak sekadar hitam.
+   * Aman: semua dibungkus try/catch dan tidak menyentuh overlay jika sudah terisi.
+   */
   function diagnoseStage() {
     try {
       var ov = $('stageOverlay');
-      // Overlay sudah dipakai untuk pesan lain (mis. "Menu DDMS dinonaktifkan").
-      if (ov && ov.hidden === false) return;
+      if (ov && ov.hidden === false) return;   // sudah ada pesan lain
+
       var frame = $('ddmsFrame');
       var box = $('stage');
       var doc = null;
       var blocked = false;
       try { doc = frame && frame.contentDocument; } catch (_e) { blocked = true; }
       var body = doc && doc.body;
-      var text = body ? String(body.textContent || '').trim() : '';
+      var text = body ? String(body.textContent || '').replace(/\s+/g, '') : '';
       var hasContent = !blocked && body && (body.children.length > 0 || text.length > 0);
-      if (hasContent) { showStageHint(''); return; }
+      if (hasContent) {
+        state.stageEmptyCount = 0;
+        showStageHint('', '');
+        setStageFallback('');
+        return;
+      }
 
       var size = box ? (box.clientWidth + 'x' + box.clientHeight) : '?';
-      var msg = blocked
-        ? 'Isi DDMS tidak bisa diperiksa (beda domain). Cek alamat DDMS di admin.'
-        : 'Halaman DDMS tidak mengirim isi. Kotak layar: ' + size + '.';
-      if (state.cfg && state.cfg.ddms && state.cfg.ddms.enabled === false) {
-        msg = 'Menu DDMS dinonaktifkan di admin.';
+      if (blocked) {
+        showStageHint('Layar DDMS kosong',
+          'Isi DDMS tidak bisa diperiksa (beda domain). Cek alamat DDMS di halaman admin.');
+        setStageFallback('Layar DDMS tidak dapat diperiksa. Cek alamat DDMS di halaman admin.');
+        return;
       }
-      showStageHint(msg + ' Cek: systemctl status ahass-panel, lalu lihat status DDMS di admin.');
-    } catch (_e) { /* jangan pernah mengganggu panel */ }
-  }
 
-  /**
-   * Baris kecil di kotak jam: hasil terakhir proxy DDMS (HTTP xxx / pesan error).
-   * Berguna saat layar DDMS hitam: kelihatan apakah server DDMS menolak.
-   */
-  function renderDdmsMeta(ddms) {
-    var el = $('panelAddr');
-    if (!el) return;
-    var info = '';
-    if (ddms.lastError) info = 'DDMS: ' + String(ddms.lastError).slice(0, 60);
-    else if (ddms.lastStatus) info = 'DDMS: HTTP ' + ddms.lastStatus;
-    if (!info) return;
-    el.title = (el.title ? el.title + ' — ' : '') + info;
+      setStageFallback('Halaman DDMS belum mengirim isi — memuat ulang otomatis…');
+      state.stageEmptyCount = (state.stageEmptyCount || 0) + 1;
+      if (state.stageEmptyCount <= 3) {
+        showStageHint('Memuat ulang DDMS…',
+          'Halaman DDMS datang kosong (percobaan ' + state.stageEmptyCount +
+          ' dari 3). Panel mencoba memuat ulang otomatis.');
+        var target = (state.cfg.ddms && state.cfg.ddms.path) || '/ddms';
+        setTimeout(function () {
+          try { frame.src = 'about:blank'; } catch (_e) { /* diabaikan */ }
+          setTimeout(function () { try { frame.src = target; } catch (_e) { /* diabaikan */ } }, 800);
+        }, 4000);
+        return;
+      }
+
+      showStageHint('Layar DDMS kosong',
+        'Halaman DDMS tidak mengirim isi. Kotak layar: ' + size +
+        '. Jalankan: curl -sk -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/ddms');
+      setStageFallback('Halaman DDMS tidak mengirim isi. Periksa server DDMS, lalu tunggu panel memuat ulang.');
+    } catch (_e) { /* jangan pernah mengganggu panel */ }
   }
 
   function applyScreenFit(display) {
