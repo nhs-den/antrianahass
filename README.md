@@ -46,6 +46,7 @@ tampil, dan animasi dibatasi pada `opacity` agar CPU/GPU tetap dingin.
 - Intel Compute Stick (x86_64, RAM 2 GB sudah cukup) — juga jalan di mini PC/Intel NUC
 - Raspberry Pi 3 B+ (DietPi, microSD 16 GB) — lihat [`raspberry/README.md`](raspberry/README.md)
 - STB Amlogic S905X/S905W/S912 (Armbian/ophub) — lihat [`stb/README.md`](stb/README.md)
+- **PC sebagai server + STB sebagai layar (LAN)** — lihat [`pc/README.md`](pc/README.md)
 - DietPi (v10.x) atau Debian 12/Ubuntu 22.04+
 - Node.js **v18+** (`apt install nodejs`)
 - Chromium (`apt install chromium`)
@@ -67,6 +68,11 @@ total di bawah 400 MB.
 > `curl -fsSL https://raw.githubusercontent.com/nhs-den/antrianahass/main/stb/one-click.sh | sudo bash`
 > — pemasang, uji layar, dan perbaikan otomatis sampai gambar muncul.
 > Detail: [`stb/README.md`](stb/README.md).
+
+> **Mau satu PC melayani beberapa STB?** Server cukup dipasang di PC:
+> `sudo bash pc/install.sh` (Linux) atau `.\pc\windows\install-service.ps1` (Windows),
+> lalu tiap STB hanya menampilkan `http://IP-PC:8080/`.
+> Detail: [`pc/README.md`](pc/README.md).
 
 ```bash
 # 1. masuk ke perangkat (SSH)
@@ -458,6 +464,11 @@ antrianahass/
 │   ├── chromium-flags.conf   # flag hemat RAM 1 GB
 │   ├── units/                # ahass-panel, ahass-kiosk, ahass-restart
 │   └── README.md / dietpi-tweaks.md
+├── pc/                       # server di PC + pemasang layar STB (LAN)
+│   ├── install.sh            # server PC (systemd)
+│   ├── doctor.js             # cek jalur PC→STB, cetak IP yang benar
+│   ├── windows/              # Windows Service (PowerShell, tanpa NSSM)
+│   └── client/               # layar STB: kiosk ke http://IP-PC:8080/
 ├── stb/                      # pemasang khusus STB Amlogic (Armbian/ophub)
 │   ├── one-click.sh          # curl | sudo bash
 │   ├── install.sh            # pasang + uji layar

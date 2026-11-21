@@ -17,6 +17,11 @@ memasang dan setelan hemat memorinya.
 Tata letak tampilan tetap: **70% DDMS** (auto-login) di kanan, **30%** lima kotak
 di kiri (jam/tanggal, logo, ulasan Google, gambar sosmed, video).
 
+> **Salah folder?** Folder ini memasang panel **mandiri** di Pi (Pi = server +
+> layar sekaligus). Kalau Anda ingin Pi hanya jadi **layar** yang menampilkan
+> panel dari sebuah PC, pakai [`pc/README.md`](../pc/README.md) — jangan
+> campur keduanya di satu perangkat.
+
 ---
 
 ## 1. Prasyarat
