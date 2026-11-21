@@ -146,6 +146,39 @@ Skrip ini memasang dependensi bila perlu, membuat `ulasan-google.service`
 `/loader.js` membalas 200. Gunakan `--dry-run` untuk melihat perintah start yang
 dideteksi sebelum dipasang.
 
+### Keduanya menyala bersamaan (panel + widget ulasan)
+
+Sejak 1.3.0 panel **menjalankan sendiri** aplikasi ulasan-google sehingga tidak
+ada terminal kedua yang perlu dibuka:
+
+- Admin → **Ulasan Google → Layanan ulasan (port 3000)**:
+  status hijau/merah, tombol **Jalankan sekarang**, **Hentikan**,
+  **Pasang autostart (systemd)**, dan isian **folder aplikasi**
+  (mis. `/home/den/ulasan-google-main`; kosongkan agar dicari otomatis).
+- Centang **Jalankan otomatis bersama panel** → tiap kali panel menyala
+  (termasuk setelah reboot) widget ikut dinyalakan; kalau widget gagal,
+  panel antrian tetap jalan.
+- Untuk autostart yang tahan reboot tanpa bergantung pada panel:
+
+```bash
+sudo bash deploy/enable-ulasan-autostart.sh              # folder dicari otomatis
+sudo bash deploy/enable-ulasan-autostart.sh --dir /home/den/ulasan-google-main
+```
+
+Perintah di atas memasang `ulasan-google.service` **dan** drop-in pada
+`ahass-panel.service` (`Wants=`/`After=`) sehingga keduanya mulai berdampingan
+saat boot, tapi kegagalan widget ulasan tidak pernah menggagalkan panel.
+Installer `raspberry/install.sh` dan `stb/install.sh` menjalankan langkah ini
+otomatis bila folder `ulasan-google*` ditemukan (lewati dengan `--no-ulasan`).
+
+Cek cepat:
+
+```bash
+systemctl status ahass-panel ulasan-google
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/loader.js   # 200 = siap
+journalctl -u ulasan-google -n 20 --no-pager
+```
+
 ### Menjalankan tanpa instalasi (mode uji)
 
 ```bash
@@ -354,10 +387,11 @@ Cukup tempel link — jenis media dikenali otomatis:
 
 ### Alamat panel di layar
 
-Di bawah tulisan status (**Antrian Terhubung**) kini tampil alamat IP perangkat,
-mis. `200.100.100.111:8080`. Itu alamat yang dipakai STB/PC lain untuk membuka
-panel; diambil dari `/__ahass/api/health` sehingga otomatis berubah bila IP
-berubah (DHCP).
+Di bawah tulisan status (**Antrian Terhubung**) tampil **IP perangkat saja**,
+mis. `200.100.100.111` (tanpa port, agar ringkas dan mudah dibaca dari jauh).
+Itu alamat yang dipakai STB/PC lain untuk membuka panel; diambil dari
+`/__ahass/api/health` sehingga otomatis berubah bila IP berubah (DHCP).
+URL lengkap (`http://IP:8080/`) ada pada tooltip baris tersebut.
 
 ### Pratinjau realtime dari admin
 
@@ -514,6 +548,7 @@ antrianahass/
 ├── deploy/
 │   ├── install.sh / update.sh / migrate.sh / uninstall.sh
 │   ├── install-ulasan.sh     # layanan widget ulasan-google (port 3000)
+│   ├── enable-ulasan-autostart.sh  # ulasan + panel menyala bersamaan saat boot
 │   ├── fix-kiosk.sh          # diagnosis + perbaikan layar kiosk (X/Chromium)
 │   ├── start-kiosk.sh
 │   ├── ahass-panel.service

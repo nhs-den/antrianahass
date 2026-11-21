@@ -255,6 +255,44 @@
             </div>
           </div>
 
+          <div class="card" id="ulasanServiceCard">
+            <h3>Layanan ulasan (port <span id="uSvcPort">3000</span>)</h3>
+            <p class="muted small">
+              Panel bisa menjalankan aplikasi <b>ulasan-google</b> sekaligus dengan dirinya sendiri,
+              jadi keduanya hidup berbarengan tanpa perlu membuka terminal.
+              Status dan tombol di bawah ini bekerja langsung pada proses / layanan di perangkat ini.
+            </p>
+
+            <div class="svc-status" id="uSvcStatus">
+              <span class="dot" id="uSvcDot"></span>
+              <strong id="uSvcState">memeriksa…</strong>
+              <span class="muted small" id="uSvcDetail"></span>
+            </div>
+
+            <label class="field">
+              <span>Folder aplikasi ulasan-google</span>
+              <input type="text" id="uSvcDir" placeholder="/home/den/ulasan-google-main">
+              <small>Kosongkan agar panel mencari otomatis (folder bernama <code>ulasan-google…</code> di home).</small>
+            </label>
+
+            <label class="field checkbox">
+              <input type="checkbox" id="uSvcManage">
+              <span>Jalankan otomatis bersama panel (disarankan)</span>
+            </label>
+
+            <div class="row">
+              <button class="btn" id="uSvcStart" type="button">Jalankan sekarang</button>
+              <button class="btn ghost" id="uSvcStop" type="button">Hentikan</button>
+              <button class="btn ghost" id="uSvcInstall" type="button">Pasang autostart (systemd)</button>
+              <button class="btn ghost" id="uSvcRefresh" type="button">Periksa ulang</button>
+            </div>
+            <p class="muted small" id="uSvcHint">
+              Agar tetap hidup setelah perangkat reboot, pasang autostart sekali
+              (butuh panel berjalan sebagai root) — atau jalankan
+              <code>sudo bash /opt/antrianahass/deploy/install-ulasan.sh</code>.
+            </p>
+          </div>
+
 
           <div class="card helper-card">
             <h3>Cara mendapatkan kode ulasan Google</h3>

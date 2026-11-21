@@ -19,6 +19,7 @@ const ddms = require('./lib/ddms');
 const proxy = require('./lib/proxy');
 const ulasanPage = require('./lib/ulasan-page');
 const screen = require('./lib/screen');
+const ulasanService = require('./lib/ulasan-service');
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -177,7 +178,10 @@ function buildPatch(body) {
         host: cleanText(r.script && r.script.host, 120).replace(/^https?:\/\//i, '').replace(/\/+$/, ''),
         port: clampInt(r.script && r.script.port, 1, 65535, 3000),
         path: cleanText(r.script && r.script.path, 200) || '/loader.js',
-        query: cleanText(r.script && r.script.query, 200)
+        query: cleanText(r.script && r.script.query, 200),
+        // Pembaruan 1.3.0: panel ikut menjalankan layanan ulasan (port 3000).
+        manage: !(r.script && r.script.manage === false),
+        dir: cleanText(r.script && r.script.dir, 400)
       }
     };
     if (typeof r.apiKey === 'string' && r.apiKey.length) {
@@ -385,6 +389,36 @@ async function handleApi(req, res, url) {
   if (p === '/__ahass/api/admin/reviews/clear-cache' && method === 'POST') {
     reviews.clearCache();
     util.sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  // Layanan widget ulasan-google: status / jalankan / hentikan / pasang autostart.
+  if (p === '/__ahass/api/admin/ulasan/status' && method === 'GET') {
+    util.sendJson(res, 200, { ok: true, status: await ulasanService.status(config.get()) });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/start' && method === 'POST') {
+    const payload = await util.readJson(req, 4 * 1024).catch(() => null);
+    if (payload && Object.prototype.hasOwnProperty.call(payload, 'dir')) {
+      // Folder yang dipilih admin disimpan supaya dipakai lagi setelah restart.
+      const dir = cleanText(payload.dir, 400);
+      config.update({ reviews: { script: { dir: dir } } });
+    }
+    const out = await ulasanService.start(config.get());
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/stop' && method === 'POST') {
+    const out = ulasanService.stop();
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/install' && method === 'POST') {
+    const out = await ulasanService.install(config.get());
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
     return;
   }
 
@@ -604,10 +638,23 @@ server.listen(PORT, HOST, () => {
       }
     });
   });
+
+  // Hidupkan widget ulasan (port 3000) berbarengan dengan panel, kalau diminta.
+  // Dijalankan setelah server siap supaya kegagalan aplikasi ulasan tidak
+  // pernah menghalangi panel antrian.
+  const rs = (config.get().reviews && config.get().reviews.script) || {};
+  if (rs.manage !== false) {
+    setTimeout(() => {
+      ulasanService.start(config.get())
+        .then((out) => util.log('Ulasan: ' + out.message))
+        .catch((err) => util.log('Ulasan: gagal dijalankan - ' + err.message));
+    }, 2500).unref();
+  }
 });
 
 function shutdown(signal) {
   util.log('Menerima ' + signal + ', mematikan server…');
+  try { ulasanService.stop(); } catch (_e) { /* diabaikan */ }
   for (const res of sseClients) {
     try { res.end(); } catch (_e) { /* diabaikan */ }
   }

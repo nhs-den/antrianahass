@@ -585,7 +585,8 @@
       return;
     }
     var p = Number(port) || 8080;
-    el.textContent = list.map(function (ip) { return ip + ':' + p; }).join('  ·  ');
+    // Di layar hanya IP-nya (port disembunyikan); URL lengkap ada di title.
+    el.textContent = list.join('  ·  ');
     el.title = 'Alamat panel: ' + list.map(function (ip) { return 'http://' + ip + ':' + p + '/'; }).join('  ');
     el.hidden = false;
   }

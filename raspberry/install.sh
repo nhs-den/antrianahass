@@ -6,6 +6,7 @@
 #   sudo bash raspberry/install.sh --mode=desktop   # desktop LXDE + Chromium fullscreen
 #   sudo bash raspberry/install.sh --mode=kiosk     # tty1 + xinit (tanpa desktop)
 #   sudo bash raspberry/install.sh --no-deps        # lewati apt-get
+#   sudo bash raspberry/install.sh --no-ulasan      # tanpa layanan widget ulasan
 #   sudo bash raspberry/install.sh --no-tweaks      # lewati sysctl/journald/logrotate
 #   sudo bash raspberry/install.sh --resolution=1920x1080   # set mode HDMI
 #   sudo bash raspberry/install.sh --dry-run        # tampilkan rencana saja
@@ -23,6 +24,7 @@ INSTALL_DEPS=1
 RESOLUTION=""
 DRY=0
 APPLY_TWEAKS=1
+SKIP_ULASAN=0
 
 NODE_BIN="/usr/bin/node"
 
@@ -40,6 +42,7 @@ die()  { echo "${c_err}[fail]${c_reset} $*" >&2; exit 1; }
 for arg in "$@"; do
   case "$arg" in
     --no-deps) INSTALL_DEPS=0 ;;
+    --no-ulasan) SKIP_ULASAN=1 ;;
     --no-tweaks) APPLY_TWEAKS=0 ;;
     --mode=*) MODE="${arg#*=}" ;;
     --user=*) KIOSK_USER="${arg#*=}" ;;
@@ -393,6 +396,27 @@ FBEOF
   systemctl daemon-reload
   systemctl enable ahass-kiosk.service >/dev/null 2>&1
   ok "Unit ahass-kiosk terpasang${WM_BIN:+ (WM: $WM_BIN)} (aktif pada boot berikutnya)."
+fi
+
+# ------------------------------------- 6a. layanan ulasan-google (port 3000)
+# Panel dan widget ulasan menyala berbarengan. Folder ulasan-google dicari
+# otomatis; kalau belum ada, langkah ini dilewati (bisa diaktifkan nanti dari
+# halaman admin → Ulasan Google → Layanan ulasan).
+ULASAN_DIR_FOUND=""
+if [ "${SKIP_ULASAN:-0}" != "1" ]; then
+  for guess in /home/*/ulasan-google-main /home/*/ulasan-google /root/ulasan-google-main /opt/ulasan-google; do
+    [ -d "$guess" ] && { ULASAN_DIR_FOUND="$guess"; break; }
+  done
+fi
+if [ -n "$ULASAN_DIR_FOUND" ]; then
+  log "Memasang layanan ulasan-google ($ULASAN_DIR_FOUND)…"
+  bash "$APP_DIR/deploy/enable-ulasan-autostart.sh" \
+    --dir "$ULASAN_DIR_FOUND" --port "${ULASAN_PORT:-3000}" \
+    || warn "Layanan ulasan-google belum siap; aktifkan dari admin → Ulasan Google."
+else
+  warn "Folder ulasan-google tidak ditemukan — widget ulasan belum dijalankan otomatis."
+  echo "        Unduh/ekstrak aplikasinya, lalu jalankan:"
+  echo "        sudo bash $APP_DIR/deploy/enable-ulasan-autostart.sh --dir <folder>"
 fi
 
 # ------------------------------------------------- 6b. resolusi HDMI (opsional)

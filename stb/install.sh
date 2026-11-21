@@ -358,6 +358,19 @@ if [ -f "$PASSWORD_FILE" ]; then
   echo "  Password admin : $(grep -m1 'Password : ' "$PASSWORD_FILE" | sed 's/Password : //')"
   echo "                   ($PASSWORD_FILE)"
 fi
+# Layanan ulasan-google (port 3000) ikut dinyalakan bersama panel bila ada.
+ULASAN_DIR_FOUND=""
+for guess in /home/*/ulasan-google-main /home/*/ulasan-google /root/ulasan-google-main /opt/ulasan-google; do
+  [ -d "$guess" ] && { ULASAN_DIR_FOUND="$guess"; break; }
+done
+if [ -n "$ULASAN_DIR_FOUND" ]; then
+  bash "$APP_DIR/deploy/enable-ulasan-autostart.sh" --dir "$ULASAN_DIR_FOUND" \
+    || warn "Layanan ulasan-google belum siap; aktifkan dari admin → Ulasan Google."
+else
+  warn "Folder ulasan-google tidak ditemukan — widget ulasan belum dijalankan otomatis."
+  echo "        Pasang nanti: sudo bash $APP_DIR/deploy/enable-ulasan-autostart.sh --dir <folder>"
+fi
+
 echo
 echo "  Layar  : systemctl status ahass-kiosk --no-pager"
 echo "  Log    : sudo journalctl -u ahass-kiosk -n 40 --no-pager"

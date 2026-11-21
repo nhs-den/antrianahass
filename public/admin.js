@@ -146,6 +146,9 @@
     $('rScriptPath').value = rs.path || '/loader.js';
     $('rScriptQuery').value = rs.query || 'kiosk=1';
     $('rScriptHost').value = rs.host || '';
+    $('uSvcDir').value = rs.dir || '';
+    $('uSvcManage').checked = rs.manage !== false;
+    $('uSvcPort').textContent = rs.port || 3000;
     $('rAvatar').checked = !!cfg.reviews.showAvatar;
     updateModeFields();
 
@@ -434,7 +437,9 @@
           host: $('rScriptHost').value.trim(),
           port: Number($('rScriptPort').value) || 3000,
           path: $('rScriptPath').value.trim() || '/loader.js',
-          query: $('rScriptQuery').value.trim()
+          query: $('rScriptQuery').value.trim(),
+          manage: $('uSvcManage').checked,
+          dir: $('uSvcDir').value.trim()
         }
       },
       gallery: {
@@ -734,6 +739,64 @@
     });
   }
 
+  /* ------------------------------------------- layanan ulasan-google (3000) */
+
+  function refreshUlasanStatus() {
+    return api('admin/ulasan/status')
+      .then(function (res) { renderUlasanStatus(res.status); })
+      .catch(function (err) {
+        if ($('uSvcState')) $('uSvcState').textContent = 'tidak bisa memeriksa';
+        if ($('uSvcDetail')) $('uSvcDetail').textContent = err.message;
+      });
+  }
+
+  function renderUlasanStatus(st) {
+    if (!st) return;
+    var dot = $('uSvcDot');
+    var state = st.running ? 'Berjalan' : 'Berhenti';
+    if (st.http && st.http.up) state += ' — port ' + st.port + ' menjawab';
+    $('uSvcState').textContent = state;
+    dot.className = 'dot ' + (st.running ? 'ok' : 'bad');
+    $('uSvcPort').textContent = st.port;
+
+    var bits = [];
+    bits.push(st.dir ? 'folder: ' + st.dir : 'folder belum ditemukan');
+    if (st.systemd && st.systemd.installed) {
+      bits.push('autostart: ' + (st.systemd.active ? 'aktif' : 'terpasang, belum aktif'));
+    } else {
+      bits.push('autostart: belum dipasang');
+    }
+    if (st.managedProcess) bits.push('dijalankan oleh panel');
+    if (st.error) bits.push(st.error);
+    $('uSvcDetail').textContent = bits.join(' · ');
+    if (!$('uSvcDir').value && st.dir) $('uSvcDir').placeholder = st.dir;
+    $('uSvcStop').disabled = !st.managedProcess;
+  }
+
+  function ulasanAction(action, button) {
+    var label = button ? button.textContent : '';
+    if (button) { button.disabled = true; button.textContent = 'memproses…'; }
+    var opts = { method: 'POST' };
+    if (action === 'start') opts.body = JSON.stringify({ dir: $('uSvcDir').value.trim() });
+    return api('admin/ulasan/' + action, opts)
+      .then(function (res) {
+        if (res.status) renderUlasanStatus(res.status);
+        toast(res.message || (res.ok ? 'Selesai.' : 'Gagal.'), res.ok ? 'ok' : 'bad');
+      })
+      .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); })
+      .finally(function () {
+        if (button) { button.disabled = false; button.textContent = label; }
+      });
+  }
+
+  function setupUlasanService() {
+    $('uSvcStart').addEventListener('click', function () { ulasanAction('start', this); });
+    $('uSvcStop').addEventListener('click', function () { ulasanAction('stop', this); });
+    $('uSvcInstall').addEventListener('click', function () { ulasanAction('install', this); });
+    $('uSvcRefresh').addEventListener('click', function () { refreshUlasanStatus(); });
+    $('rScriptPort').addEventListener('change', function () { $('uSvcPort').textContent = this.value || 3000; });
+  }
+
   /* ------------------------------------------------------------ password */
 
   function setupPassword() {
@@ -825,6 +888,7 @@
           showApp();
           loadConfig();
           loadStatus();
+          refreshUlasanStatus();
         })
         .catch(function (err) { setMsg($('loginMsg'), err.message); })
         .finally(function () { btn.disabled = false; });
@@ -854,6 +918,7 @@
     setupTabs();
     setupLogo();
     setupTests();
+    setupUlasanService();
     setupPassword();
 
     api('admin/session')
@@ -862,6 +927,7 @@
           showApp();
           loadConfig();
           loadStatus();
+          refreshUlasanStatus();
         } else {
           showLogin();
         }
