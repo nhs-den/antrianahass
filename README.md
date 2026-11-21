@@ -461,6 +461,48 @@ Catatan teknis: iframe DDMS berukuran absolut di dalam wadahnya dan auto-fit
 dibatasi 0.6–1 serta gagal-aman (kembali ke skala 1) — jadi pembaruan tata letak
 tidak bisa lagi membuat layar DDMS hilang.
 
+## 7b. Docker (semua bagian dalam container)
+
+Bila perangkat sudah punya Docker, tidak perlu memasang Node/Chromium di
+sistem. Dua container tersedia:
+
+| Container | Isi | Port |
+|---|---|---|
+| `ahass-panel` | server panel + `/admin` + proxy DDMS + widget ulasan bawaan | 8080, 3000 |
+| `ahass-kiosk` | Chromium fullscreen (opsional, satu per layar) | – |
+
+Data (pengaturan, password, logo, video) disimpan di volume `ahass-data`,
+jadi update tidak menghapus konfigurasi.
+
+```bash
+bash docker/ahass-docker.sh up            # bangun + jalankan panel
+bash docker/ahass-docker.sh up --kiosk    # sekaligus layar kiosk
+bash docker/ahass-docker.sh status        # status + versi + alamat
+bash docker/ahass-docker.sh password      # password admin
+bash docker/ahass-docker.sh update        # ambil kode terbaru + bangun ulang
+bash docker/ahass-docker.sh reset-password "PasswordBaru123"
+bash docker/ahass-docker.sh down          # berhenti (data tetap)
+```
+
+Cara manual dengan compose:
+
+```bash
+cp docker/.env.example docker/.env
+docker compose -f docker/docker-compose.yml --env-file docker/.env up -d --build
+```
+
+Panduan lengkap (variabel, kiosk armv7 untuk Pi 3 B+, Windows 10/Docker
+Desktop, backup volume, troubleshooting): **`docker/README.md`**.
+
+Catatan penting:
+- Docker Desktop (Windows/macOS) tidak mendukung `network_mode: host` — pakai
+  `-p 8080:8080 -p 3000:3000` dan set `AHASS_DISPLAY_IP=IP-PC` supaya alamat di
+  layar benar.
+- Kiosk di dalam Docker hanya bisa menampilkan gambar bila X server host
+  tersedia (`DISPLAY=:0` + socket `/tmp/.X11-unix`). Di Windows, pakai kiosk
+  native (`pc/install.sh`).
+- Versi panel di container bisa dicek: `curl -s localhost:8080/__ahass/api/health`.
+
 ## 8. Perintah harian
 
 ```bash

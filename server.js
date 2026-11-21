@@ -53,8 +53,19 @@ function lanAddresses() {
   return out;
 }
 
-/** Alamat tampilan yang dipakai STB (untuk baris status di layar). */
+/**
+ * Alamat tampilan yang dipakai STB (untuk baris status di layar).
+ *
+ * Di Docker, alamat yang terlihat oleh STB adalah IP HOST, bukan IP container
+ * (biasanya 172.17.x.x yang tidak bisa dihubungi). Karena itu bisa dipaksa
+ * lewat AHASS_DISPLAY_IP (boleh lebih dari satu, dipisah koma).
+ */
 function displayAddresses() {
+  const forced = String(process.env.AHASS_DISPLAY_IP || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (forced.length) return forced;
   return lanAddresses().map((a) => a.address);
 }
 
@@ -247,7 +258,10 @@ async function handleApi(req, res, url) {
       // jumlah layar kiosk yang tersambung lewat SSE (untuk memastikan
       // tombol admin benar-benar sampai ke layar)
       screens: sseClients.size,
-      authed: auth.isAuthed(req)
+      authed: auth.isAuthed(req),
+      // penanda lingkungan: 'docker' bila berjalan di dalam container
+      runtime: process.env.AHASS_RUNTIME || (fs.existsSync('/.dockerenv') ? 'docker' : 'host'),
+      dataDir: config.DATA_DIR
     });
     return;
   }

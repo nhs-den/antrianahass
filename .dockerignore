@@ -1,0 +1,13 @@
+# Konteks build image panel (docker/Dockerfile) — jaga tetap kecil & tanpa rahasia.
+.git
+.gitignore
+.gitattributes
+docker
+data
+node_modules
+*.log
+README.md
+raspberry
+stb
+pc
+deploy

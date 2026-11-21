@@ -1,0 +1,106 @@
+# ==========================================================================
+# AHASS Panel — Docker Compose
+#
+# Cara pakai singkat (di PC/server/Pi yang sudah punya Docker):
+#
+#   cp docker/.env.example docker/.env      # isi password admin & DDMS
+#   docker compose -f docker/docker-compose.yml --env-file docker/.env up -d
+#   # layar: buka http://IP-PERANGKAT:8080/   (atau http://IP/admin)
+#
+# Layar kiosk (TV yang menampilkan panel) — jalankan di perangkat yang punya
+# layar & X server, dengan profil:
+#
+#   docker compose -f docker/docker-compose.yml --profile kiosk up -d
+#
+# Data (config, logo, video, password) disimpan di volume `ahass-data`,
+# jadi `docker compose down` TIDAK menghapus pengaturan. Hapus volume hanya
+# bila memang ingin mengulang dari nol (`down -v`).
+# ==========================================================================
+
+name: antrianahass
+
+services:
+  panel:
+    image: ${AHASS_IMAGE:-antrianahass:latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ahass-panel
+    restart: unless-stopped
+    # network_mode host supaya:
+    #  - alamat panel di STB = IP perangkat (bukan 172.17.x.x),
+    #  - port 8080 & 3000 langsung terpakai tanpa pemetaan,
+    #  - widget ulasan di port 3000 bisa dibuka STB/PC lain.
+    # Bila host memakai Docker Desktop (Windows/macOS) atau Anda lebih suka
+    # jaringan bridge, ganti dengan blok `ports:` di bawah dan set
+    # AHASS_DISPLAY_IP ke IP host.
+    network_mode: host
+    # ports:
+    #   - "8080:8080"
+    #   - "3000:3000"
+    environment:
+      TZ: ${TZ:-Asia/Jakarta}
+      # Password admin pertama. Kalau kosong, dibuat acak dan ditulis ke
+      # /var/lib/antrianahass/ADMIN-PASSWORD.txt di dalam volume.
+      AHASS_ADMIN_PASSWORD: ${AHASS_ADMIN_PASSWORD:-}
+      # Alamat DDMS bawaan (bisa juga diubah dari halaman admin).
+      AHASS_DDMS_URL: ${AHASS_DDMS_URL:-https://web-h2-cbr.daya-dms.id}
+      # Alamat yang ditampilkan di layar untuk STB/PC lain. Kosong = deteksi
+      # otomatis (benar bila network_mode: host).
+      AHASS_DISPLAY_IP: ${AHASS_DISPLAY_IP:-}
+      AHASS_RUNTIME: docker
+    volumes:
+      - ahass-data:/var/lib/antrianahass
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/__ahass/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ---------------------------------------------------------------- kiosk
+  # Satu container per layar. Hanya berisi Chromium; panel tetap di container
+  # `panel`. Aktifkan dengan `--profile kiosk`.
+  kiosk:
+    image: ${AHASS_KIOSK_IMAGE:-antrianahass-kiosk:latest}
+    build:
+      context: ./kiosk
+      dockerfile: Dockerfile
+      args:
+        BASE: ${AHASS_KIOSK_BASE:-debian:bookworm-slim}
+    container_name: ahass-kiosk
+    restart: unless-stopped
+    profiles: ["kiosk"]
+    # Host network + X socket host: layar tampil di TV yang terpasang.
+    network_mode: host
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      AHASS_URL: ${AHASS_URL:-http://127.0.0.1:8080/}
+      SCREEN_W: ${SCREEN_W:-1920x1080x24}
+      # 1 = pakai Xvfb internal (server tanpa layar / untuk uji)
+      AHASS_XVFB: ${AHASS_XVFB:-0}
+      TZ: ${TZ:-Asia/Jakarta}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    # Akselerasi GPU OPSIONAL — default dimatikan karena Docker menolak start
+    # bila /dev/dri tidak ada (Compute Stick sering tidak punya). Bila layar
+    # terasa berat, aktifkan sendiri:
+    #   devices:
+    #     - /dev/dri:/dev/dri
+    ipc: host
+    depends_on:
+      - panel
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  ahass-data:
+    name: ahass-data
