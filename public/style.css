@@ -29,6 +29,11 @@
      bergeser). Diatur dari tombol Atas/Bawah di admin. */
   --panel-h: 100%;
   --panel-anchor: start;
+  /* Skala & geser khusus layar DDMS (70% kanan) - dipakai untuk memotong
+     bagian atas DDMS yang tidak perlu (menu/header) atau menggeser posisinya. */
+  --stage-scale: 1;
+  --stage-x: 0px;
+  --stage-y: 0px;
   color-scheme: dark;
 }
 
@@ -440,6 +445,16 @@ img { display: block; }
   overflow: hidden;
   background: #0a0f15;
   border: 1px solid var(--line);
+}
+
+/* Isi DDMS dibungkus .stage-inner supaya bisa diskalakan/digeser TANPA
+   mengubah ukuran kotak .stage (supaya tidak pernah "terpotong" karena
+   transform: scale pada wadah yang memakai tinggi 100%). */
+.stage-inner {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--stage-scale)) translate(var(--stage-x), var(--stage-y));
 }
 
 .ddms-frame {

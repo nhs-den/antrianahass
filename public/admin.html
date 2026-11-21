@@ -510,8 +510,11 @@ npm start          # default port 3000</pre>
 
         <div class="card">
           <h3>Ukuran &amp; posisi panel (pas layar)</h3>
+          <p class="small" id="screenLink" style="margin:2px 0 8px">
+            Layar kiosk: <b id="screenLinkState">memeriksa…</b>
+          </p>
           <p class="muted small" id="fitBuild" style="margin:2px 0 8px">
-            Versi halaman ini: <b>1.3.3</b> — bila tombol di bawah tidak bereaksi,
+            Versi halaman ini: <b>1.3.7</b> — bila tombol di bawah tidak bereaksi,
             tekan <b>Ctrl+Shift+R</b> sekali (browser masih memakai JS lama).
           </p>
           <p class="muted small">
@@ -573,8 +576,31 @@ npm start          # default port 3000</pre>
               <small class="muted">1 klik = 4 px</small>
             </div>
 
+            <div class="fit-pad">
+              <div class="fit-pad-label">Layar DDMS<br>(kanan) ◀▶</div>
+              <div class="dpad dpad-row">
+                <button class="btn ghost dpad-btn" type="button" data-stage="in" title="Perbesar tampilan DDMS">◀</button>
+                <button class="btn ghost dpad-btn" type="button" data-stage="out" title="Perkecil tampilan DDMS">▶</button>
+              </div>
+              <small class="muted">◀ perbesar · ▶ perkecil</small>
+            </div>
+
+            <div class="fit-pad">
+              <div class="fit-pad-label">Geser DDMS<br>▲▼</div>
+              <div class="dpad dpad-row">
+                <button class="btn ghost dpad-btn" type="button" data-stage="up" title="Geser isi DDMS ke atas (memotong header)">▲</button>
+                <button class="btn ghost dpad-btn" type="button" data-stage="down" title="Geser isi DDMS ke bawah">▼</button>
+              </div>
+              <div class="dpad dpad-row">
+                <button class="btn ghost dpad-btn" type="button" data-stage="left" title="Geser isi DDMS ke kiri">◀</button>
+                <button class="btn ghost dpad-btn" type="button" data-stage="right" title="Geser isi DDMS ke kanan">▶</button>
+              </div>
+              <small class="muted">▲ potong header · ▼ turun</small>
+            </div>
+
             <div class="fit-readout">
               <div>Panel kiri: <b id="boxSizeValue">30% × 100%</b></div>
+              <div>DDMS: <b id="stageValue">100%</b> · geser <b id="stageOffsetValue">0, 0</b> px</div>
               <div>Geser X: <b id="offsetXValue">0</b> px · Y: <b id="offsetYValue">0</b> px</div>
               <div>Skala: <b id="scaleValue">100%</b></div>
               <small class="muted">◎ = semua kembali normal (100%, tanpa geser).</small>

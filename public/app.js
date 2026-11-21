@@ -607,6 +607,14 @@
     root.setProperty('--screen-y', y + 'px');
     root.setProperty('--panel-h', h + '%');
     root.setProperty('--panel-anchor', d.boxAnchor === 'bottom' ? 'end' : 'start');
+
+    // Layar DDMS: skala & geser sendiri (memotong header/menu DDMS).
+    var ss = Number(d.stageScalePercent);
+    if (!isFinite(ss) || ss <= 0) ss = 100;
+    ss = Math.min(150, Math.max(50, ss)) / 100;
+    root.setProperty('--stage-scale', String(ss));
+    root.setProperty('--stage-x', (Number(d.stageOffsetX) || 0) + 'px');
+    root.setProperty('--stage-y', (Number(d.stageOffsetY) || 0) + 'px');
   }
 
   /**

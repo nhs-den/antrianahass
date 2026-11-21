@@ -119,6 +119,9 @@ function buildPatch(body) {
       leftPercent: clampInt(d.leftPercent, 20, 60, 30),
       boxHeightPercent: clampInt(d.boxHeightPercent, 40, 100, 100),
       boxAnchor: d.boxAnchor === 'bottom' ? 'bottom' : 'top',
+      stageScalePercent: clampInt(d.stageScalePercent, 50, 150, 100),
+      stageOffsetX: clampInt(d.stageOffsetX, -400, 400, 0),
+      stageOffsetY: clampInt(d.stageOffsetY, -400, 400, 0),
       scalePercent: clampInt(d.scalePercent, 50, 100, 100),
       offsetX: clampInt(d.offsetX, -200, 200, 0),
       offsetY: clampInt(d.offsetY, -200, 200, 0),
@@ -241,6 +244,9 @@ async function handleApi(req, res, url) {
       ddms: proxy.proxyStatus(),
       ips: displayAddresses(),
       port: PORT,
+      // jumlah layar kiosk yang tersambung lewat SSE (untuk memastikan
+      // tombol admin benar-benar sampai ke layar)
+      screens: sseClients.size,
       authed: auth.isAuthed(req)
     });
     return;
@@ -475,12 +481,17 @@ async function handleApi(req, res, url) {
         ? d.boxAnchor
         : (cur.boxAnchor || 'top'),
       scalePercent: positive(d.scalePercent, 50, 100, 100),
+      stageScalePercent: positive(d.stageScalePercent, 50, 150, cur.stageScalePercent || 100),
+      stageOffsetX: clampInt(d.stageOffsetX, -400, 400, cur.stageOffsetX || 0),
+      stageOffsetY: clampInt(d.stageOffsetY, -400, 400, cur.stageOffsetY || 0),
       offsetX: clampInt(d.offsetX, -200, 200, 0),
       offsetY: clampInt(d.offsetY, -200, 200, 0),
       live: true
     };
     broadcast({ type: 'display-preview', display: payload, at: Date.now() });
-    util.sendJson(res, 200, { ok: true, display: payload });
+    // clients = jumlah layar kiosk yang sedang mendengarkan. Bila 0, tombol
+    // memang mengirim tapi tidak ada layar yang menerima (kiosk perlu restart).
+    util.sendJson(res, 200, { ok: true, display: payload, clients: sseClients.size });
     return;
   }
 
@@ -488,7 +499,7 @@ async function handleApi(req, res, url) {
   // panel admin ditutup, atau tombol Batal ditekan).
   if (p === '/__ahass/api/admin/display/preview' && method === 'DELETE') {
     broadcast({ type: 'display-preview', display: null, live: false, at: Date.now() });
-    util.sendJson(res, 200, { ok: true });
+    util.sendJson(res, 200, { ok: true, clients: sseClients.size });
     return;
   }
 

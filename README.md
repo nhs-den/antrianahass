@@ -445,6 +445,38 @@ Dua penyebab yang sudah diperbaiki sejak 1.3.3:
    - matikan juga di perangkat: **Chrome → Setelan → Bahasa → "Tawarkan
      terjemahan"** (mati), dan hapus ekstensi penerjemah bila ada.
 
+### DDMS terpotong (menu atas tidak terlihat)
+
+Layar kanan (DDMS) punya kelompok tombol sendiri di **Tampilan → Ukuran &
+posisi panel**:
+
+| Kelompok | Tombol | Fungsi |
+|---|---|---|
+| **Layar DDMS** | ◀ / ▶ | perbesar / perkecil seluruh tampilan DDMS (50–150%) |
+| **Geser DDMS** | ▲ / ▼ | geser isi DDMS ke atas / bawah (▲ untuk memotong header) |
+| **Geser DDMS** | ◀ / ▶ | geser isi DDMS ke kiri / kanan |
+
+Contoh untuk header DDMS yang memakan tempat: tekan ▶ beberapa kali lalu ▲
+sampai bagian "Penerimaan/Antrean/…" pas di atas. Tekan **Simpan pas layar**.
+
+Layar kanan dibungkus wadah sendiri (`.stage-inner`) sehingga pengecilan tidak
+lagi membuat gambar "menjauh dari kotak" — isi DDMS tetap mengisi bidangnya.
+
+### Tombol admin tidak menggerakkan layar?
+
+Di atas tombol ada baris **"Layar kiosk: terhubung (1)"**:
+
+- **terhubung** → perintah diterima layar (angka = jumlah layar yang mendengarkan).
+- **tidak terhubung** → perintah terkirim tapi tidak ada layar yang mendengar,
+  biasanya karena proses Chromium lama masih jalan. Jalankan:
+
+```bash
+sudo systemctl restart ahass-kiosk
+# bila masih: sudo pkill -f 'ahass-kiosk' ; sudo systemctl start ahass-kiosk
+```
+
+Angka ini juga tersedia di `curl -s localhost:8080/__ahass/api/health` → `screens`.
+
 ### Pratinjau realtime dari admin
 
 Setiap penekanan tombol geser/skala di **Tampilan → Pas layar** langsung dikirim

@@ -246,7 +246,11 @@
       // tinggi panel kiri (persen). 100 = memenuhi tinggi layar seperti biasa.
       boxHeightPercent: clampNum(d.boxHeightPercent, 40, 100, 100),
       // sisi yang tetap: 'top' (bawah bergeser) atau 'bottom' (atas bergeser)
-      boxAnchor: d.boxAnchor === 'bottom' ? 'bottom' : 'top'
+      boxAnchor: d.boxAnchor === 'bottom' ? 'bottom' : 'top',
+      // skala & geser khusus layar DDMS (kanan)
+      stageScalePercent: clampNum(d.stageScalePercent, 50, 150, 100),
+      stageOffsetX: clampNum(d.stageOffsetX, -400, 400, 0),
+      stageOffsetY: clampNum(d.stageOffsetY, -400, 400, 0)
     };
   }
 
@@ -290,6 +294,8 @@
     $('scaleValue').textContent = fit.scalePercent + '%';
     var left = leftPercentValue();
     $('boxSizeValue').textContent = Math.round(left) + '% × ' + Math.round(fit.boxHeightPercent || 100) + '%';
+    $('stageValue').textContent = Math.round(fit.stageScalePercent || 100) + '%';
+    $('stageOffsetValue').textContent = (fit.stageOffsetX || 0) + ', ' + (fit.stageOffsetY || 0);
     $('offsetXValue').textContent = fit.offsetX;
     $('offsetYValue').textContent = fit.offsetY;
   }
@@ -312,6 +318,9 @@
         leftPercent: left,
         boxHeightPercent: fit.boxHeightPercent,
         boxAnchor: fit.boxAnchor,
+        stageScalePercent: fit.stageScalePercent || 100,
+        stageOffsetX: fit.stageOffsetX || 0,
+        stageOffsetY: fit.stageOffsetY || 0,
         scalePercent: fit.scalePercent,
         offsetX: fit.offsetX,
         offsetY: fit.offsetY
@@ -320,9 +329,25 @@
 
     var send = function () {
       previewPending = false;
-      api('admin/display/preview', { method: 'POST', body: payload }).catch(function () {
-        /* pratinjau bersifat opsional; jangan ganggu pengguna */
-      });
+      // Ambil nilai TERBARU saat dikirim (state.fit bisa berubah setelah
+      // antrean throttle) supaya layar mengikuti posisi terakhir.
+      var now = state.fit || readFit(null);
+      payload.display.boxHeightPercent = now.boxHeightPercent;
+      payload.display.boxAnchor = now.boxAnchor;
+      payload.display.stageScalePercent = now.stageScalePercent || 100;
+      payload.display.stageOffsetX = now.stageOffsetX || 0;
+      payload.display.stageOffsetY = now.stageOffsetY || 0;
+      payload.display.scalePercent = now.scalePercent;
+      payload.display.offsetX = now.offsetX;
+      payload.display.offsetY = now.offsetY;
+      payload.display.leftPercent = leftPercentValue();
+      api('admin/display/preview', { method: 'POST', body: payload })
+        .then(function (res) {
+          if (res && res.clients !== undefined) setScreenLink(res.clients);
+        })
+        .catch(function () {
+          /* pratinjau bersifat opsional; jangan ganggu pengguna */
+        });
     };
 
     if (immediate) {
@@ -338,6 +363,27 @@
     }, 160);
   }
 
+  /** Tampilkan status: apakah layar kiosk tersambung (menerima perintah)? */
+  function setScreenLink(clients) {
+    var el = $('screenLinkState');
+    if (!el) return;
+    var n = Number(clients);
+    if (!isFinite(n)) return;
+    if (n > 0) {
+      el.textContent = 'terhubung (' + n + ') — tombol langsung menggerakkan layar';
+      el.style.color = '#86efac';
+    } else {
+      el.textContent = 'tidak terhubung — jalankan: sudo systemctl restart ahass-kiosk';
+      el.style.color = '#fda4af';
+    }
+  }
+
+  function refreshScreenLink() {
+    return api('health')
+      .then(function (res) { setScreenLink(res.screens); })
+      .catch(function () { /* diamkan */ });
+  }
+
   /** Kembalikan layar ke nilai yang tersimpan. */
   function stopPreview() {
     if (previewTimer) { clearTimeout(previewTimer); previewTimer = null; }
@@ -350,6 +396,9 @@
     var root = document.documentElement.style;
     root.setProperty('--panel-h', (fit.boxHeightPercent || 100) + '%');
     root.setProperty('--panel-anchor', fit.boxAnchor === 'bottom' ? 'end' : 'start');
+    root.setProperty('--stage-scale', String((fit.stageScalePercent || 100) / 100));
+    root.setProperty('--stage-x', (fit.stageOffsetX || 0) + 'px');
+    root.setProperty('--stage-y', (fit.stageOffsetY || 0) + 'px');
     root.setProperty('--screen-scale', String(fit.scalePercent / 100));
     root.setProperty('--screen-x', fit.offsetX + 'px');
     root.setProperty('--screen-y', fit.offsetY + 'px');
@@ -366,7 +415,10 @@
       offsetX: fit.offsetX,
       offsetY: fit.offsetY,
       boxHeightPercent: fit.boxHeightPercent,
-      boxAnchor: fit.boxAnchor
+      boxAnchor: fit.boxAnchor,
+      stageScalePercent: fit.stageScalePercent,
+      stageOffsetX: fit.stageOffsetX,
+      stageOffsetY: fit.stageOffsetY
     };
     syncFitInputs();
     previewFit();
@@ -420,19 +472,60 @@
     }
   }
 
+  /**
+   * Layar DDMS (kanan): skala dan geser sendiri. Berguna saat bagian atas DDMS
+   * (menu/header) terpotong: perkecil dengan ▶ lalu geser ke atas dengan ▲.
+   */
+  function adjustStage(action) {
+    var fit = state.fit || readFit(null);
+    var scale = clampNum(fit.stageScalePercent, 50, 150, 100);
+    var x = clampNum(fit.stageOffsetX, -400, 400, 0);
+    var y = clampNum(fit.stageOffsetY, -400, 400, 0);
+    var before = { s: scale, x: x, y: y };
+
+    if (action === 'in') scale = clampNum(scale + 2, 50, 150, 100);
+    else if (action === 'out') scale = clampNum(scale - 2, 50, 150, 100);
+    else if (action === 'up') y = clampNum(y - 8, -400, 400, 0);
+    else if (action === 'down') y = clampNum(y + 8, -400, 400, 0);
+    else if (action === 'left') x = clampNum(x - 8, -400, 400, 0);
+    else if (action === 'right') x = clampNum(x + 8, -400, 400, 0);
+
+    state.fit = {
+      scalePercent: fit.scalePercent,
+      offsetX: fit.offsetX,
+      offsetY: fit.offsetY,
+      boxHeightPercent: fit.boxHeightPercent,
+      boxAnchor: fit.boxAnchor,
+      stageScalePercent: scale,
+      stageOffsetX: x,
+      stageOffsetY: y
+    };
+    syncFitInputs();
+    previewFit();
+
+    if (before.s === scale && before.x === x && before.y === y) {
+      toast('Sudah di batas (' + scale + '%).', 'ok');
+    }
+  }
+
   function moveFit(dx, dy) {
     var fit = state.fit || readFit(null);
     if (dx === 0 && dy === 0) {
       // ◎ = mulai ulang: geser 0,0 dan skala 100% (tinggi panel tetap)
       state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0,
-        boxHeightPercent: fit.boxHeightPercent, boxAnchor: fit.boxAnchor };
+        boxHeightPercent: fit.boxHeightPercent, boxAnchor: fit.boxAnchor,
+        stageScalePercent: fit.stageScalePercent, stageOffsetX: fit.stageOffsetX,
+        stageOffsetY: fit.stageOffsetY };
     } else {
       state.fit = {
         scalePercent: fit.scalePercent,
         offsetX: clampNum(fit.offsetX + dx, -200, 200, 0),
         offsetY: clampNum(fit.offsetY + dy, -200, 200, 0),
         boxHeightPercent: fit.boxHeightPercent,
-        boxAnchor: fit.boxAnchor
+        boxAnchor: fit.boxAnchor,
+        stageScalePercent: fit.stageScalePercent,
+        stageOffsetX: fit.stageOffsetX,
+        stageOffsetY: fit.stageOffsetY
       };
     }
     syncFitInputs();
@@ -510,6 +603,9 @@
         leftPercent: clampNum(leftPercentValue(), 20, 60, 30),
         boxHeightPercent: (state.fit && state.fit.boxHeightPercent) || 100,
         boxAnchor: (state.fit && state.fit.boxAnchor) || 'top',
+        stageScalePercent: (state.fit && state.fit.stageScalePercent) || 100,
+        stageOffsetX: (state.fit && state.fit.stageOffsetX) || 0,
+        stageOffsetY: (state.fit && state.fit.stageOffsetY) || 0,
         scalePercent: state.fit ? state.fit.scalePercent : 100,
         offsetX: state.fit ? state.fit.offsetX : 0,
         offsetY: state.fit ? state.fit.offsetY : 0,
@@ -979,7 +1075,19 @@
     on('dLeft', 'change', function () { pushPreview(true); });
 
     // Pas layar: dua kelompok tombol (geser & ukur), semuanya realtime
-    on('fitSaveBtn', 'click', function () { save(); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stage]'), function (btn) {
+      btn.addEventListener('click', function () {
+        adjustStage(btn.getAttribute('data-stage'));
+        pushPreview(false);
+      });
+    });
+
+    // Simpan pas layar = simpan SEMUA perubahan (panel kiri + DDMS + skala/geser).
+    on('fitSaveBtn', 'click', function () {
+      save(false).then(function () {
+        stopPreview();
+      }).catch(function () { /* pesan sudah ditampilkan save() */ });
+    });
     on('fitCancelBtn', 'click', function () {
       stopPreview();
       toast('Pratinjau dibatalkan, layar kembali ke setelan tersimpan.', 'ok');
@@ -1006,7 +1114,8 @@
 
     on('fitResetBtn', 'click', function () {
       var fit = state.fit || readFit(null);
-      state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0, boxHeightPercent: 100, boxAnchor: 'top' };
+      state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0, boxHeightPercent: 100,
+        boxAnchor: 'top', stageScalePercent: 100, stageOffsetX: 0, stageOffsetY: 0 };
       setLeftPercent(30);
       syncFitInputs();
       previewFit();
@@ -1031,6 +1140,7 @@
     on('resApplyBtn', 'click', applyResolution);
     loadScreenInfo();
     guardPreviewExit();
+    refreshScreenLink();
     on('giAdd', 'click', function () { addItem('images'); });
     on('gvAdd', 'click', function () { addItem('videos'); });
     [$('giUrl'), $('gvUrl')].forEach(function (input) {
@@ -1051,6 +1161,7 @@
           loadConfig();
           loadStatus();
           refreshUlasanStatus();
+          refreshScreenLink();
         })
         .catch(function (err) { setMsg($('loginMsg'), err.message); })
         .finally(function () { btn.disabled = false; });
