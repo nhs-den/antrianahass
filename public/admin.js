@@ -146,6 +146,7 @@
     $('rScriptPath').value = rs.path || '/loader.js';
     $('rScriptQuery').value = rs.query || 'kiosk=1';
     $('rScriptHost').value = rs.host || '';
+    $('rJsonUrl').value = cfg.reviews.jsonUrl || '';
     $('uSvcDir').value = rs.dir || '';
     $('uSvcManage').checked = rs.manage !== false;
     $('uSvcPort').textContent = rs.port || 3000;
@@ -241,7 +242,6 @@
 
   function syncFitInputs() {
     var fit = state.fit || readFit(null);
-    $('dScale').value = fit.scalePercent;
     $('scaleValue').textContent = fit.scalePercent + '%';
     $('offsetXValue').textContent = fit.offsetX;
     $('offsetYValue').textContent = fit.offsetY;
@@ -307,11 +307,26 @@
     root.setProperty('--screen-y', fit.offsetY + 'px');
   }
 
+  /**
+   * Ubah skala layar dalam langkah 2%. Sesuai permintaan di lapangan:
+   * ◀ / ▲ memperbesar, ▶ / ▼ memperkecil (semua tombol berlaku sama).
+   */
+  function zoomFit(delta) {
+    var fit = state.fit || readFit(null);
+    state.fit = {
+      scalePercent: clampNum(fit.scalePercent + delta, 50, 100, 100),
+      offsetX: fit.offsetX,
+      offsetY: fit.offsetY
+    };
+    syncFitInputs();
+    previewFit();
+  }
+
   function moveFit(dx, dy) {
     var fit = state.fit || readFit(null);
     if (dx === 0 && dy === 0) {
-      state.fit = readFit(null);
-      state.fit.scalePercent = fit.scalePercent;
+      // ◎ = mulai ulang: geser 0,0 dan skala 100%
+      state.fit = { scalePercent: 100, offsetX: 0, offsetY: 0 };
     } else {
       state.fit = {
         scalePercent: fit.scalePercent,
@@ -431,6 +446,7 @@
         maxReviews: Number($('rMax').value) || 10,
         cacheMinutes: Number($('rCache').value) || 60,
         refreshMinutes: Number($('rRefresh').value) || 0,
+        jsonUrl: $('rJsonUrl').value.trim(),
         showAvatar: $('rAvatar').checked,
         script: {
           code: $('rScriptCode').value,
@@ -767,6 +783,11 @@
       bits.push('autostart: belum dipasang');
     }
     if (st.managedProcess) bits.push('dijalankan oleh panel');
+    if (st.builtin && st.builtin.active) {
+      bits.push('widget bawaan aktif di port ' + st.builtin.port + (st.builtinSource === 'json' ? ' (URL JSON)' : ''));
+    } else if (st.builtin && st.builtin.error) {
+      bits.push('widget bawaan: ' + st.builtin.error);
+    }
     if (st.error) bits.push(st.error);
     $('uSvcDetail').textContent = bits.join(' · ');
     if (!$('uSvcDir').value && st.dir) $('uSvcDir').placeholder = st.dir;
@@ -794,6 +815,22 @@
     $('uSvcStop').addEventListener('click', function () { ulasanAction('stop', this); });
     $('uSvcInstall').addEventListener('click', function () { ulasanAction('install', this); });
     $('uSvcRefresh').addEventListener('click', function () { refreshUlasanStatus(); });
+    $('uSvcTest').addEventListener('click', function () {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'mengambil…';
+      api('admin/reviews/test', { method: 'POST' })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.error || 'Gagal');
+          var d = res.data || {};
+          var n = (d.items || []).length;
+          var who = (d.items && d.items[0] && d.items[0].author) || '-';
+          toast('Ulasan terbaca: ' + n + ' item' + (d.rating ? ', rating ' + d.rating : '') +
+            (n ? ' (contoh: ' + who + ')' : ''), 'ok');
+        })
+        .catch(function (err) { toast('Gagal: ' + err.message, 'bad'); })
+        .finally(function () { btn.disabled = false; btn.textContent = 'Uji ambil ulasan sekarang'; });
+    });
     $('rScriptPort').addEventListener('change', function () { $('uSvcPort').textContent = this.value || 3000; });
   }
 
@@ -837,19 +874,23 @@
     });
     $('dLeft').addEventListener('change', function () { pushPreview(true); });
 
-    // Pas layar: skala + tombol geser
-    $('dScale').addEventListener('input', function () {
-      state.fit = state.fit || readFit(null);
-      state.fit.scalePercent = clampNum(this.value, 50, 100, 100);
-      syncFitInputs();
-      previewFit();
-      pushPreview(false);
-    });
-    $('dScale').addEventListener('change', function () { pushPreview(true); });
+    // Pas layar: dua kelompok tombol (geser & ukur), semuanya realtime
     $('fitSaveBtn').addEventListener('click', function () { save(); });
     $('fitCancelBtn').addEventListener('click', function () {
       stopPreview();
       toast('Pratinjau dibatalkan, layar kembali ke setelan tersimpan.', 'ok');
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-zoom]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var step = 2;   // 2% per klik
+        switch (btn.getAttribute('data-zoom')) {
+          case 'in': case 'in-y': zoomFit(step); break;
+          case 'out': case 'out-y': zoomFit(-step); break;
+          default: zoomFit(100 - (state.fit || readFit(null)).scalePercent); break;  // reset 100%
+        }
+        pushPreview(false);
+      });
     });
 
     Array.prototype.forEach.call(document.querySelectorAll('[data-move]'), function (btn) {

@@ -269,12 +269,26 @@ browser sekali pakai lewat token berumur 3 menit.
 
 ## 6. Widget ulasan Google
 
+**Sejak 1.3.1 widget ulasan menyala otomatis** — tidak perlu memasang aplikasi
+tambahan dan tidak perlu folder `ulasan-google`:
+
+1. Panel membuka port **3000** dan menyajikannya sendiri:
+   `/loader.js` (penggambar ulasan di kotak ke-3) dan `/reviews.json` (data).
+2. Isi sumber datanya sekali di admin → **Ulasan Google**:
+   - **URL JSON ulasan** (paling mudah, mis. endpoint JSON ulasan Google), atau
+   - **Google Places API**: API key + Place ID / nama tempat.
+3. Tekan **Uji ambil ulasan sekarang** untuk memastikan datanya terbaca.
+
+Kalau port 3000 sudah dipakai aplikasi `ulasan-google` terpisah (atau kolom
+**Kode embed** / **Host** diisi), panel memakai aplikasi itu dan membiarkan
+widget bawaannya diam. Tidak ada yang perlu diubah di sisi kiosk.
+
 Ada 4 cara memasang widget di kotak ke-3. **Kalau Anda hanya punya snippet
 `loader.js` dari `ulasan-google`, pakai mode nomor 1.**
 
 | Mode | Yang dibutuhkan | Kapan dipakai |
 |---|---|---|
-| **1. Widget ulasan-google (snippet)** | kode embed `<script>…loader.js…</script>` | Aplikasi `ulasan-google` dijalankan sendiri (port **3000**) — **paling mudah** |
+| **1. Widget ulasan (bawaan/snippet)** | URL JSON ulasan **atau** kode embed `<script>…loader.js…</script>` | **Bawaan panel** (port **3000** disediakan sendiri) — paling mudah |
 | 2. JSON service | URL endpoint JSON | Bila `ulasan-google` menyediakan API JSON |
 | 3. Google Places API | API key + Place ID | Tanpa service tambahan, langsung ke Google |
 | 4. Embed halaman | URL halaman siap pakai | Bila `ulasan-google` punya halaman HTML sendiri |
@@ -392,6 +406,19 @@ mis. `200.100.100.111` (tanpa port, agar ringkas dan mudah dibaca dari jauh).
 Itu alamat yang dipakai STB/PC lain untuk membuka panel; diambil dari
 `/__ahass/api/health` sehingga otomatis berubah bila IP berubah (DHCP).
 URL lengkap (`http://IP:8080/`) ada pada tooltip baris tersebut.
+
+### Tombol pas layar (geser & ukur)
+
+Ada **dua kelompok tombol** di **Tampilan → Pas agar tidak terpotong**, keduanya
+langsung berlaku di layar kiosk:
+
+| Kelompok | ◀ / ▲ | ▶ / ▼ | ◎ |
+|---|---|---|---|
+| **Geser layar** | geser ke kiri / atas | geser ke kanan / bawah | kembali ke 0,0 |
+| **Ukur layar** | **perbesar** (+2%) | **perkecil** (−2%) | skala kembali 100% |
+
+Jadi ◀ memperbesar dan ▶ memperkecil layar (▲/▼ sama: atas memperbesar, bawah
+memperkecil). Tekan **Simpan pas layar** agar nilainya dipakai setelah reboot.
 
 ### Pratinjau realtime dari admin
 

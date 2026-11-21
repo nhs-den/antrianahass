@@ -331,8 +331,12 @@ Hindari swapfile di microSD; pakai zram (bawaan DietPi).
 
 ## 8. Widget ulasan Google (kotak 3)
 
-Widget ulasan adalah aplikasi terpisah di port **3000**. Di Pi 3 B+ aplikasi
-Node tambahan itu ikut memakan 60–120 MB RAM, jadi pertimbangkan dulu:
+**Sejak 1.3.1 tidak perlu aplikasi tambahan.** Panel menyediakan sendiri
+`/loader.js` + `/reviews.json` di port **3000** (widget bawaan, ~2 MB RAM).
+Cukup isi **URL JSON ulasan** (atau API key + Place ID) di admin → Ulasan Google.
+
+Aplikasi `ulasan-google` terpisah tetap didukung bila Anda sudah punya: ia
+memakan 60–120 MB RAM di Pi 3 B+, jadi pertimbangkan dulu:
 
 ```bash
 # cek apakah widget sudah berjalan

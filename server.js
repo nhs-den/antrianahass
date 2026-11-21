@@ -18,6 +18,7 @@ const statics = require('./lib/static');
 const ddms = require('./lib/ddms');
 const proxy = require('./lib/proxy');
 const ulasanPage = require('./lib/ulasan-page');
+const ulasanBuiltin = require('./lib/ulasan-builtin');
 const screen = require('./lib/screen');
 const ulasanService = require('./lib/ulasan-service');
 
@@ -172,6 +173,8 @@ function buildPatch(body) {
       cacheMinutes: clampInt(r.cacheMinutes, 2, 1440, 60),
       showAvatar: r.showAvatar !== false,
       refreshMinutes: clampInt(r.refreshMinutes, 0, 1440, 30),
+      // URL JSON untuk widget ulasan bawaan (opsional)
+      jsonUrl: r.jsonUrl === undefined ? undefined : (util.sanitizeUrl(r.jsonUrl) || ''),
       script: {
         // snippet disimpan apa adanya (maks 8 KB), sisanya parameter pembangkit URL
         code: String((r.script && r.script.code) || '').trim().slice(0, 8192),
@@ -394,7 +397,10 @@ async function handleApi(req, res, url) {
 
   // Layanan widget ulasan-google: status / jalankan / hentikan / pasang autostart.
   if (p === '/__ahass/api/admin/ulasan/status' && method === 'GET') {
-    util.sendJson(res, 200, { ok: true, status: await ulasanService.status(config.get()) });
+    const st = await ulasanService.status(config.get());
+    st.builtin = ulasanBuiltin.status();
+    st.builtinSource = String(config.get().reviews.jsonUrl || '') ? 'json' : 'auto';
+    util.sendJson(res, 200, { ok: true, status: st });
     return;
   }
 
@@ -406,13 +412,37 @@ async function handleApi(req, res, url) {
       config.update({ reviews: { script: { dir: dir } } });
     }
     const out = await ulasanService.start(config.get());
-    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
+    const st = await ulasanService.status(config.get());
+    if (!st.managedProcess && !st.http.up) {
+      // Tidak ada aplikasi terpisah -> pakai widget bawaan panel.
+      ulasanBuiltin.start(config.get);
+    }
+    st.builtin = ulasanBuiltin.status();
+    util.sendJson(res, 200, { ok: out.ok, message: out.message, status: st });
     return;
   }
 
   if (p === '/__ahass/api/admin/ulasan/stop' && method === 'POST') {
     const out = ulasanService.stop();
     util.sendJson(res, 200, { ok: out.ok, message: out.message, status: await ulasanService.status(config.get()) });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/ulasan/builtin' && method === 'POST') {
+    const body = await util.readJson(req, 4 * 1024).catch(() => null);
+    const url = util.sanitizeUrl(body && body.jsonUrl);
+    config.update({ reviews: { jsonUrl: url || '' } });
+    reviews.clearCache();
+    ulasanBuiltin.stop();
+    const st = ulasanService.status ? await ulasanService.status(config.get()) : {};
+    if (body && body.enable) ulasanBuiltin.start(config.get);
+    util.sendJson(res, 200, {
+      ok: true,
+      message: url
+        ? 'URL JSON disimpan. Widget bawaan akan membacanya (port ' + (st.port || 3000) + ').'
+        : 'URL JSON dikosongkan.',
+      builtin: ulasanBuiltin.status()
+    });
     return;
   }
 
@@ -639,14 +669,22 @@ server.listen(PORT, HOST, () => {
     });
   });
 
-  // Hidupkan widget ulasan (port 3000) berbarengan dengan panel, kalau diminta.
-  // Dijalankan setelah server siap supaya kegagalan aplikasi ulasan tidak
-  // pernah menghalangi panel antrian.
+  // Widget ulasan otomatis menyala bersama panel (port 3000).
+  // Urutan: kalau ada aplikasi ulasan-google terpisah -> pakai itu; kalau tidak,
+  // widget bawaan panel yang melayani /loader.js + /reviews.json.
+  // Dijalankan setelah server siap supaya kegagalan widget tidak menghalangi panel.
   const rs = (config.get().reviews && config.get().reviews.script) || {};
   if (rs.manage !== false) {
     setTimeout(() => {
       ulasanService.start(config.get())
-        .then((out) => util.log('Ulasan: ' + out.message))
+        .then(async (out) => {
+          util.log('Ulasan: ' + out.message);
+          const st = await ulasanService.status(config.get());
+          if (!st.http.up) {
+            const builtin = ulasanBuiltin.start(config.get);
+            util.log('Ulasan bawaan: ' + builtin.message);
+          }
+        })
         .catch((err) => util.log('Ulasan: gagal dijalankan - ' + err.message));
     }, 2500).unref();
   }
@@ -655,6 +693,7 @@ server.listen(PORT, HOST, () => {
 function shutdown(signal) {
   util.log('Menerima ' + signal + ', mematikan server…');
   try { ulasanService.stop(); } catch (_e) { /* diabaikan */ }
+  try { ulasanBuiltin.stop(); } catch (_e) { /* diabaikan */ }
   for (const res of sseClients) {
     try { res.end(); } catch (_e) { /* diabaikan */ }
   }

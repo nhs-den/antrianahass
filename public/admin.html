@@ -221,9 +221,23 @@
 
           <div data-mode="script">
             <p class="muted small">
-              Tempel kode embed dari aplikasi <code>ulasan-google</code> di kolom bawah — atau biarkan
-              kosong dan cukup isi port (bawaannya <code>3000</code>) agar snippet dibuat otomatis.
-              Widget dijalankan di dalam kotak ke-3, terpisah dari panel.
+              <b>Bawaan (tanpa aplikasi tambahan):</b> panel sudah menjalankan widget ulasan sendiri di
+              port <code>3000</code> dan menyala otomatis setiap boot. Cukup isi <b>URL JSON ulasan</b>
+              di bawah, atau isi <b>API key + Place ID</b> di menu Google Places.
+            </p>
+            <label class="field">
+              <span>URL JSON ulasan (opsional untuk widget bawaan)</span>
+              <input type="text" id="rJsonUrl" placeholder="https://contoh.id/api/reviews">
+              <small>
+                Endpoint JSON yang berisi daftar ulasan. Boleh dikosongkan bila memakai
+                <b>Google Places API</b> (API key + Place ID). Format JSON apa pun yang punya
+                array ulasan (`reviews`, `data`, `items`, …) akan terbaca.
+              </small>
+            </label>
+            <p class="muted small">
+              Sudah punya aplikasi <code>ulasan-google</code> terpisah? Tempel kode embed-nya di bawah
+              (atau isi kolom Host). Bila kode embed / host diisi, panel memakai aplikasi itu,
+              bukan widget bawaan.
             </p>
             <label class="field">
               <span>Kode embed (opsional)</span>
@@ -258,9 +272,10 @@
           <div class="card" id="ulasanServiceCard">
             <h3>Layanan ulasan (port <span id="uSvcPort">3000</span>)</h3>
             <p class="muted small">
-              Panel bisa menjalankan aplikasi <b>ulasan-google</b> sekaligus dengan dirinya sendiri,
-              jadi keduanya hidup berbarengan tanpa perlu membuka terminal.
-              Status dan tombol di bawah ini bekerja langsung pada proses / layanan di perangkat ini.
+              Widget ulasan menyala <b>otomatis</b> bersama panel: bila ada aplikasi
+              <b>ulasan-google</b> terpisah, panel menjalankannya; bila tidak ada, panel memakai
+              <b>widget bawaan</b> (loader.js + /reviews.json di port yang sama) sehingga tidak
+              perlu memasang apa pun lagi. Status dan tombol di bawah bekerja langsung di perangkat ini.
             </p>
 
             <div class="svc-status" id="uSvcStatus">
@@ -278,6 +293,14 @@
             <label class="field checkbox">
               <input type="checkbox" id="uSvcManage">
               <span>Jalankan otomatis bersama panel (disarankan)</span>
+            </label>
+
+            <label class="field">
+              <span>Uji cepat widget bawaan</span>
+              <div class="row" style="margin-top:6px">
+                <button class="btn ghost" id="uSvcTest" type="button">Uji ambil ulasan sekarang</button>
+              </div>
+              <small>Menanyakan ulasan dari sumber yang dipilih (URL JSON / Places) tanpa menunggu jadwal refresh.</small>
             </label>
 
             <div class="row">
@@ -486,31 +509,45 @@ npm start          # default port 3000</pre>
         <div class="card">
           <h3>Pas agar tidak terpotong (overscan TV)</h3>
           <p class="muted small">
-            Kalau jam/tepi kanan terpotong di TV, perkecil skala lalu geser dengan tombol.
-            Setiap klik <b>langsung</b> menggeser layar kiosk (realtime), tanpa restart.
+            Kalau jam/tepi kanan terpotong di TV, pakai <b>Ukur layar</b> untuk memperkecil
+            lalu <b>Geser layar</b> untuk menggeser. Setiap klik <b>langsung</b> berlaku di
+            layar kiosk (realtime), tanpa restart.
             Tekan <b>Simpan pas layar</b> agar nilai ini dipakai terus setelah reboot.
           </p>
 
-          <label class="field">
-            <span>Skala panel: <b id="scaleValue">100%</b></span>
-            <input type="range" id="dScale" min="50" max="100" step="1">
-            <small>Mulai dari 94–96% kalau tepi layar terpotong.</small>
-          </label>
-
           <div class="fit-controls">
-            <div class="dpad" role="group" aria-label="Geser panel">
-              <button class="btn ghost dpad-btn" type="button" data-move="up" title="Geser ke atas">▲</button>
-              <div class="dpad-mid">
-                <button class="btn ghost dpad-btn" type="button" data-move="left" title="Geser ke kiri">◀</button>
-                <button class="btn ghost dpad-btn" type="button" data-move="reset" title="Kembalikan ke tengah">◎</button>
-                <button class="btn ghost dpad-btn" type="button" data-move="right" title="Geser ke kanan">▶</button>
+            <div class="fit-pad">
+              <div class="fit-pad-label">Geser layar</div>
+              <div class="dpad" role="group" aria-label="Geser layar">
+                <button class="btn ghost dpad-btn" type="button" data-move="up" title="Geser seluruh layar ke atas">▲</button>
+                <div class="dpad-mid">
+                  <button class="btn ghost dpad-btn" type="button" data-move="left" title="Geser seluruh layar ke kiri">◀</button>
+                  <button class="btn ghost dpad-btn" type="button" data-move="reset" title="Kembalikan geser ke 0,0 dan skala 100%">◎</button>
+                  <button class="btn ghost dpad-btn" type="button" data-move="right" title="Geser seluruh layar ke kanan">▶</button>
+                </div>
+                <button class="btn ghost dpad-btn" type="button" data-move="down" title="Geser seluruh layar ke bawah">▼</button>
               </div>
-              <button class="btn ghost dpad-btn" type="button" data-move="down" title="Geser ke bawah">▼</button>
+              <small class="muted">1 klik = 4 px</small>
             </div>
+
+            <div class="fit-pad">
+              <div class="fit-pad-label">Ukur layar</div>
+              <div class="dpad" role="group" aria-label="Ukur layar">
+                <button class="btn ghost dpad-btn" type="button" data-zoom="in-y" title="Perbesar layar (vertikal)">▲</button>
+                <div class="dpad-mid">
+                  <button class="btn ghost dpad-btn" type="button" data-zoom="in" title="◀ Perbesar layar">◀</button>
+                  <button class="btn ghost dpad-btn" type="button" data-zoom="reset" title="Kembalikan skala ke 100%">◎</button>
+                  <button class="btn ghost dpad-btn" type="button" data-zoom="out" title="▶ Perkecil layar">▶</button>
+                </div>
+                <button class="btn ghost dpad-btn" type="button" data-zoom="out-y" title="Perkecil layar (vertikal)">▼</button>
+              </div>
+              <small class="muted">◀ perbesar · ▶ perkecil</small>
+            </div>
+
             <div class="fit-readout">
-              <div>Geser X: <b id="offsetXValue">0</b> px</div>
-              <div>Geser Y: <b id="offsetYValue">0</b> px</div>
-              <small class="muted">1 klik = 4 px. Tombol ◎ mengembalikan ke 0,0.</small>
+              <div>Geser X: <b id="offsetXValue">0</b> px · Y: <b id="offsetYValue">0</b> px</div>
+              <div>Skala: <b id="scaleValue">100%</b></div>
+              <small class="muted">Tombol ◎ mengembalikan ke 0,0 dan skala 100%.</small>
               <div class="fit-actions">
                 <button class="btn primary" id="fitSaveBtn" type="button">Simpan pas layar</button>
                 <button class="btn ghost" id="fitCancelBtn" type="button">Batal / kembali</button>

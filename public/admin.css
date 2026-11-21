@@ -224,6 +224,8 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 }
 .dpad-btn:active { transform: translateY(1px); }
 
+.fit-pad { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fit-pad-label { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--muted, #8ea3b9); }
 .fit-readout { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
 .fit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 
