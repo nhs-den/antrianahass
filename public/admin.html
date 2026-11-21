@@ -474,13 +474,22 @@ npm start          # default port 3000</pre>
       <!-- ------------------------------ DISPLAY -------------------------- -->
       <section class="panel" data-panel="display">
         <h2>Tampilan panel</h2>
-        <p class="muted">Pengaturan tata letak layar kiri.</p>
+        <p class="muted">
+          Tata letak panel kiosk menyesuaikan sendiri dengan resolusi layar
+          (16:9, 16:10, 4:3, potret — semua otomatis). Tidak perlu memilih resolusi.
+        </p>
 
         <div class="card">
           <label class="field">
             <span>Lebar panel kiri: <b id="leftValue">30%</b></span>
             <input type="range" id="dLeft" min="20" max="60" step="1">
             <small>Layar kanan (DDMS) otomatis mengikuti sisanya.</small>
+          </label>
+
+          <label class="field">
+            <span>Skala tampilan: <b id="scaleValue">100%</b></span>
+            <input type="range" id="dScale" min="50" max="100" step="1">
+            <small>Turunkan bila tepi layar terpotong oleh TV (overscan). </small>
           </label>
 
           <div class="grid-3">
@@ -506,143 +515,14 @@ npm start          # default port 3000</pre>
             <label class="switch"><input type="checkbox" id="dSeconds"><span>Tampilkan detik</span></label>
             <label class="switch"><input type="checkbox" id="dCursor"><span>Sembunyikan kursor</span></label>
           </div>
-        </div>
 
-        <div class="card">
-          <h3>Ukuran &amp; posisi panel (pas layar)</h3>
-          <p class="small" id="screenLink" style="margin:2px 0 8px">
+          <p class="small" id="screenLink" style="margin:10px 0 0">
             Layar kiosk: <b id="screenLinkState">memeriksa…</b>
           </p>
-          <p class="muted small" id="fitBuild" style="margin:2px 0 8px">
-            Versi halaman ini: <b>1.3.7</b> — bila tombol di bawah tidak bereaksi,
-            tekan <b>Ctrl+Shift+R</b> sekali (browser masih memakai JS lama).
+          <p class="muted small" id="fitBuild" style="margin:4px 0 0">
+            Versi halaman ini: <b>1.4.0</b> — bila perubahan tidak terlihat,
+            tekan <b>Ctrl+Shift+R</b> (browser memakai JS lama).
           </p>
-          <p class="muted small">
-            Empat kelompok tombol, masing-masing menggerakkan <b>sisinya sendiri</b>:
-            <b>Kiri ◀▶</b> dan <b>Kanan ◀▶</b> untuk lebar panel kiri / DDMS,
-            <b>Atas ▲▼</b> dan <b>Bawah ▲▼</b> untuk tinggi panel kiri.
-            Setiap klik <b>langsung</b> berlaku di layar kiosk (realtime), tanpa restart.
-            Butuh menggeser seluruh layar (overscan TV)? Pakai <b>Geser layar</b>.
-            Tekan <b>Simpan pas layar</b> agar nilai ini dipakai setelah reboot.
-          </p>
-
-          <div class="fit-controls">
-            <div class="fit-pad">
-              <div class="fit-pad-label">Kiri ◀▶</div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-edge="left-out" title="Kurangi lebar panel kiri (mepet ke kiri)">◀</button>
-                <button class="btn ghost dpad-btn" type="button" data-edge="left-in" title="Tambah lebar panel kiri (mepet ke kanan)">▶</button>
-              </div>
-              <small class="muted">◀ sempit · ▶ lebar</small>
-            </div>
-
-            <div class="fit-pad">
-              <div class="fit-pad-label">Kanan ◀▶</div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-edge="right-in" title="Tambah lebar DDMS (mepet ke kiri)">◀</button>
-                <button class="btn ghost dpad-btn" type="button" data-edge="right-out" title="Kurangi lebar DDMS (mepet ke kanan)">▶</button>
-              </div>
-              <small class="muted">◀ lebar · ▶ sempit</small>
-            </div>
-
-            <div class="fit-pad">
-              <div class="fit-pad-label">Atas ▲<br>▼</div>
-              <div class="dpad">
-                <button class="btn ghost dpad-btn" type="button" data-edge="top-in" title="Perbesar panel kiri (sisi atas mepet ke atas)">▲</button>
-                <button class="btn ghost dpad-btn" type="button" data-edge="top-out" title="Perkecil panel kiri (sisi atas mepet ke bawah)">▼</button>
-              </div>
-              <small class="muted">▲ besar · ▼ kecil</small>
-            </div>
-
-            <div class="fit-pad">
-              <div class="fit-pad-label">Bawah ▲<br>▼</div>
-              <div class="dpad">
-                <button class="btn ghost dpad-btn" type="button" data-edge="bottom-in" title="Perbesar panel kiri (sisi bawah mepet ke bawah)">▲</button>
-                <button class="btn ghost dpad-btn" type="button" data-edge="bottom-out" title="Perkecil panel kiri (sisi bawah mepet ke atas)">▼</button>
-              </div>
-              <small class="muted">▲ besar · ▼ kecil</small>
-            </div>
-
-            <div class="fit-pad">
-              <div class="fit-pad-label">Geser layar<br>(overscan) ◀▶</div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-move="left" title="Geser seluruh layar ke kiri">◀</button>
-                <button class="btn ghost dpad-btn" type="button" data-move="right" title="Geser seluruh layar ke kanan">▶</button>
-              </div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-move="up" title="Geser seluruh layar ke atas">▲</button>
-                <button class="btn ghost dpad-btn" type="button" data-move="down" title="Geser seluruh layar ke bawah">▼</button>
-              </div>
-              <small class="muted">1 klik = 4 px</small>
-            </div>
-
-            <div class="fit-pad">
-              <div class="fit-pad-label">Layar DDMS<br>(kanan) ◀▶</div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-stage="in" title="Perbesar tampilan DDMS">◀</button>
-                <button class="btn ghost dpad-btn" type="button" data-stage="out" title="Perkecil tampilan DDMS">▶</button>
-              </div>
-              <small class="muted">◀ perbesar · ▶ perkecil</small>
-            </div>
-
-            <div class="fit-pad">
-              <div class="fit-pad-label">Geser DDMS<br>▲▼</div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-stage="up" title="Geser isi DDMS ke atas (memotong header)">▲</button>
-                <button class="btn ghost dpad-btn" type="button" data-stage="down" title="Geser isi DDMS ke bawah">▼</button>
-              </div>
-              <div class="dpad dpad-row">
-                <button class="btn ghost dpad-btn" type="button" data-stage="left" title="Geser isi DDMS ke kiri">◀</button>
-                <button class="btn ghost dpad-btn" type="button" data-stage="right" title="Geser isi DDMS ke kanan">▶</button>
-              </div>
-              <small class="muted">▲ potong header · ▼ turun</small>
-            </div>
-
-            <div class="fit-readout">
-              <div>Panel kiri: <b id="boxSizeValue">30% × 100%</b></div>
-              <div>DDMS: <b id="stageValue">100%</b> · geser <b id="stageOffsetValue">0, 0</b> px</div>
-              <div>Geser X: <b id="offsetXValue">0</b> px · Y: <b id="offsetYValue">0</b> px</div>
-              <div>Skala: <b id="scaleValue">100%</b></div>
-              <small class="muted">◎ = semua kembali normal (100%, tanpa geser).</small>
-              <div class="fit-actions">
-                <button class="btn ghost" id="fitResetBtn" type="button">◎ Normal</button>
-                <button class="btn primary" id="fitSaveBtn" type="button">Simpan pas layar</button>
-                <button class="btn ghost" id="fitCancelBtn" type="button">Batal / kembali</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Resolusi layar perangkat</h3>
-          <p class="muted small">
-            Beberapa TV menampilkan mode HDMI yang lebih kecil dari aslinya. Pilih resolusi
-            yang paling cocok, lalu tekan <b>Terapkan</b> — perangkat akan reboot sendiri.
-          </p>
-          <div class="grid-3">
-            <label class="field">
-              <span>Resolusi</span>
-              <select id="resMode">
-                <option value="">— pilih —</option>
-                <option value="1920x1080">1920×1080 (Full HD, 16:9)</option>
-                <option value="1280x720">1280×720 (HD, paling ringan)</option>
-                <option value="1360x768">1360×768 (HD Ready)</option>
-                <option value="1600x900">1600×900</option>
-                <option value="1440x900">1440×900 (16:10)</option>
-                <option value="1024x768">1024×768 (4:3)</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Setelan saat ini</span>
-              <input type="text" id="resCurrent" readonly>
-            </label>
-            <div class="field">
-              <span>&nbsp;</span>
-              <button class="btn primary" id="resApplyBtn" type="button">Terapkan &amp; reboot</button>
-            </div>
-          </div>
-          <label class="switch"><input type="checkbox" id="resOverscan"><span>Matikan overscan TV (<code>disable_overscan=1</code>)</span></label>
-          <p class="muted small" id="resHint"></p>
         </div>
       </section>
 

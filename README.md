@@ -407,101 +407,24 @@ Itu alamat yang dipakai STB/PC lain untuk membuka panel; diambil dari
 `/__ahass/api/health` sehingga otomatis berubah bila IP berubah (DHCP).
 URL lengkap (`http://IP:8080/`) ada pada tooltip baris tersebut.
 
-### Tombol pas layar: per sisi
+### Tata letak otomatis (semua resolusi)
 
-Di **Tampilan → Pas agar tidak terpotong** ada empat kelompok tombol. Masing-masing
-menggerakkan **sisi layarnya sendiri**, langsung terlihat di layar kiosk:
+Tidak ada pilihan resolusi dan tidak ada tombol geser manual. Panel menyesuaikan
+diri sendiri:
 
-| Kelompok | ◀ / ▲ | ▶ / ▼ | Yang berubah |
-|---|---|---|---|
-| **Kiri** | ◀ panel kiri menyempit | ▶ panel kiri melebar | lebar panel kiri (20–60%) |
-| **Kanan** | ◀ DDMS melebar | ▶ DDMS menyempit | lebar DDMS (kebalikan panel kiri) |
-| **Atas** | ▲ sisi atas naik | ▼ sisi atas turun | tinggi panel kiri, sisi atas bergerak |
-| **Bawah** | ▲ sisi bawah turun | ▼ sisi bawah naik | tinggi panel kiri, sisi bawah bergerak |
+- **16:9 / 16:10 / ultrawide** → dua kolom (panel kiri + DDMS).
+- **4:3 dan layar potret** → panel kiri pindah ke atas DDMS, isi panel 2 kolom.
+- **Layar kecil / pendek** → padding, teks, dan jumlah baris ulasan mengecil
+  otomatis.
+- **DDMS** diukur lalu diskalakan supaya seluruh halamannya masuk kotak
+  (`--stage-fit`), dihitung ulang setiap kali ukuran layar berubah. Header/menu
+  DDMS tidak lagi terpotong.
 
-Tambahan:
-
-- **Geser layar ◀▶▲▼** untuk menggeser seluruh layar (koreksi overscan TV), 4 px/klik.
-- **◎ Normal** mengembalikan semuanya: lebar 30%, tinggi 100%, skala 100%, geser 0.
-- **Simpan pas layar** menyimpan permanen (`leftPercent`, `boxHeightPercent`,
-  `boxAnchor`, `scalePercent`, `offsetX/Y`); **Batal / kembali** membatalkan pratinjau.
-- Kalau tombol ditekan saat sudah di batas (20%/60% atau 40%/100%), muncul pesan
-  "Sudah di batas …" — jadi tidak terasa macet.
-
-### Tombol pas layar tidak bereaksi / tampilan berubah sendiri
-
-Dua penyebab yang sudah diperbaiki sejak 1.3.3:
-
-1. **Browser memakai JS lama** (tombol memanggil elemen yang belum ada di HTML
-   baru). Sekarang halaman admin menampilkan **versi halaman** di atas tombol;
-   kalau tombol tetap diam, tekan **Ctrl+Shift+R** sekali. Sejak 1.3.3 listener
-   dipasang dengan aman, jadi satu bagian yang gagal tidak mematikan yang lain.
-2. **Terjemahan otomatis Google Translate** (Chrome menawarkan "Terjemahkan
-   halaman ini?"). Penerjemah ini mengubah teks & tata letak sehingga tombol
-   tampak tertukar/mati. Sejak 1.3.3:
-   - halaman mengirim `google: notranslate`, `<html translate="no">`,
-     `Content-Language: id`, dan Chromium dijalankan dengan
-     `--disable-features=Translate,…` (sudah ada di `chromium-flags.conf`);
-   - matikan juga di perangkat: **Chrome → Setelan → Bahasa → "Tawarkan
-     terjemahan"** (mati), dan hapus ekstensi penerjemah bila ada.
-
-### DDMS terpotong (menu atas tidak terlihat)
-
-Layar kanan (DDMS) punya kelompok tombol sendiri di **Tampilan → Ukuran &
-posisi panel**:
-
-| Kelompok | Tombol | Fungsi |
-|---|---|---|
-| **Layar DDMS** | ◀ / ▶ | perbesar / perkecil seluruh tampilan DDMS (50–150%) |
-| **Geser DDMS** | ▲ / ▼ | geser isi DDMS ke atas / bawah (▲ untuk memotong header) |
-| **Geser DDMS** | ◀ / ▶ | geser isi DDMS ke kiri / kanan |
-
-Contoh untuk header DDMS yang memakan tempat: tekan ▶ beberapa kali lalu ▲
-sampai bagian "Penerimaan/Antrean/…" pas di atas. Tekan **Simpan pas layar**.
-
-Layar kanan dibungkus wadah sendiri (`.stage-inner`) sehingga pengecilan tidak
-lagi membuat gambar "menjauh dari kotak" — isi DDMS tetap mengisi bidangnya.
-
-### Tombol admin tidak menggerakkan layar?
-
-Di atas tombol ada baris **"Layar kiosk: terhubung (1)"**:
-
-- **terhubung** → perintah diterima layar (angka = jumlah layar yang mendengarkan).
-- **tidak terhubung** → perintah terkirim tapi tidak ada layar yang mendengar,
-  biasanya karena proses Chromium lama masih jalan. Jalankan:
-
-```bash
-sudo systemctl restart ahass-kiosk
-# bila masih: sudo pkill -f 'ahass-kiosk' ; sudo systemctl start ahass-kiosk
-```
-
-Angka ini juga tersedia di `curl -s localhost:8080/__ahass/api/health` → `screens`.
-
-### Pratinjau realtime dari admin
-
-Setiap penekanan tombol geser/skala di **Tampilan → Pas layar** langsung dikirim
-ke layar kiosk lewat SSE `display-preview` — layar bergeser seketika, tanpa
-restart dan tanpa menyimpan. Tekan **Simpan pas layar** untuk menyimpan permanen,
-atau **Batal / kembali** untuk mengembalikan ke nilai tersimpan.
-
----
-
-### Panel tidak fullscreen / layout bertumpuk
-
-Jendela Chromium lebih kecil dari layar → panel kiri pindah ke bawah. Penyebabnya
-tidak ada **window manager** di kiosk (Chromium mengabaikan `--kiosk` tanpa WM).
-Installer Raspberry terbaru memasang `matchbox-window-manager`; untuk pemasangan
-lama jalankan ulang `sudo bash raspberry/install.sh --no-deps`.
-
-### Tepi layar terpotong (overscan TV)
-
-Admin → **Tampilan → Pas agar tidak terpotong**: turunkan skala ke 94–96% lalu
-geser dengan tombol ◀ ▶ ▲ ▼. Perubahan langsung terlihat di layar kiosk.
-
-### `/dev/fb0: Permission denied` di log Xorg
-
-Unit kiosk kini memuat `SupplementaryGroups=video render input audio`. Tanpa itu,
-`Group=` mengganti grup utama dan proses tidak boleh membuka framebuffer.
+Di admin tersisa dua pengaturan yang perlu: **lebar panel kiri** (20–60%) dan
+**skala tampilan** (50–100%, untuk TV yang memotong tepi/overscan). Bila layar
+kiosk tidak ikut berubah, ada baris **“Layar kiosk: terhubung”** di kartu yang
+sama — kalau tertulis *tidak terhubung*, jalankan
+`sudo systemctl restart ahass-kiosk`.
 
 ## 8. Perintah harian
 

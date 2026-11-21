@@ -200,36 +200,6 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
 }
 .switch-row { display: flex; gap: 20px; flex-wrap: wrap; }
 
-/* ------------------- pas layar: tombol geser (d-pad) ------------------- */
-
-.fit-controls {
-  display: flex;
-  gap: 20px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-.dpad { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.dpad-row { flex-direction: row; }
-.dpad-mid { display: flex; gap: 6px; }
-.dpad-btn {
-  width: 46px;
-  height: 40px;
-  padding: 0;
-  font-size: 15px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.dpad-btn:active { transform: translateY(1px); }
-
-.fit-pad { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.fit-pad-label { font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--muted, #8ea3b9); }
-.fit-readout { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
-.fit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-
 /* ------------------------- kartu bantuan (helper) ---------------------- */
 
 .helper-card { border-left: 3px solid var(--accent, #e11d48); }
@@ -247,11 +217,7 @@ input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px;
   overflow-x: auto;
   white-space: pre;
 }
-.fit-readout b { color: var(--accent-2, #ff4d6d); }
 
-@media (max-width: 560px) {
-  .dpad-btn { width: 40px; height: 36px; }
-}
 
 .advanced {
   border: 1px dashed var(--line);

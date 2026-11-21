@@ -615,6 +615,42 @@
     root.setProperty('--stage-scale', String(ss));
     root.setProperty('--stage-x', (Number(d.stageOffsetX) || 0) + 'px');
     root.setProperty('--stage-y', (Number(d.stageOffsetY) || 0) + 'px');
+    fitStage();
+  }
+
+  /**
+   * Muat halaman DDMS ke dalam kotaknya secara otomatis.
+   *
+   * Halaman DDMS punya ukuran sendiri (mis. 1600x900 pada browser 1024x768 di
+   * dalam kotak yang lebih pendek) sehingga bagian atasnya terpotong. Daripada
+   * menebak, ukur lebar isi iframe lalu hitung faktor skala supaya SELURUH
+   * halaman masuk. Tidak ada resolusi yang perlu dipilih: ukuran kotak dibaca
+   * dari layar saat itu, dan dihitung ulang saat layar berubah.
+   */
+  function fitStage() {
+    var box = $('stage');
+    var inner = $('stageInner');
+    var frame = $('ddmsFrame');
+    if (!box || !inner || !frame) return;
+    var bw = box.clientWidth;
+    var bh = box.clientHeight;
+    if (!bw || !bh) return;
+
+    var iw = 0;
+    var ih = 0;
+    try {
+      var doc = frame.contentDocument;
+      iw = (doc && (doc.documentElement.scrollWidth || doc.body.scrollWidth)) || 0;
+      ih = (doc && (doc.documentElement.scrollHeight || doc.body.scrollHeight)) || 0;
+    } catch (_err) { /* lain origin: pakai perkiraan 1280x720 */ }
+
+    if (!iw || !ih) { iw = 1280; ih = 720; }
+
+    // Hanya mengecil (tidak pernah memperbesar) supaya tidak ada yang terpotong.
+    var fit = Math.min(1, Math.min(bw / iw, bh / ih));
+    if (!isFinite(fit) || fit <= 0) fit = 1;
+    fit = Math.max(0.4, fit);
+    document.documentElement.style.setProperty('--stage-fit', String(Math.round(fit * 1000) / 1000));
   }
 
   /**
@@ -626,6 +662,20 @@
     document.documentElement.style.setProperty('--left', (d.leftPercent || 30) + '%');
     applyScreenFit(d);
     setStatus('warn', 'Pratinjau dari admin');
+  }
+
+  function watchStage() {
+    var frame = $('ddmsFrame');
+    if (frame) {
+      frame.addEventListener('load', function () {
+        fitStage();
+        setTimeout(fitStage, 800);   // DDMS kadang menggambar setelah load
+      });
+    }
+    if (window.addEventListener) {
+      window.addEventListener('resize', fitStage);
+      window.addEventListener('orientationchange', fitStage);
+    }
   }
 
   function loadConfig() {
@@ -676,6 +726,7 @@
     tickClock();
     setInterval(tickClock, 1000);
     setupFrameEvents();
+    watchStage();
     loadConfig().then(function () {
       if (!state.cfg) return;
       checkHealth();
