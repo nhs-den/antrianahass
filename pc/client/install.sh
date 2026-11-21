@@ -15,12 +15,14 @@ set -euo pipefail
 
 PC_HOST=""
 PORT="${PORT:-8080}"
-PROFILE_DIR="${PROFILE_DIR:-/var/lib/antrianahass-client/chromium}"
-STATE_DIR="${STATE_DIR:-/var/lib/antrianahass-client}"
-KIOSK_USER="${KIOSK_USER:-}"
 MODE_DEPS=1
 MODE_FIX=1
 DRY=0
+PC_SHORT=""
+PC_TARGET=""
+PROFILE_DIR="${PROFILE_DIR:-/var/lib/antrianahass-client/chromium}"
+STATE_DIR="${STATE_DIR:-/var/lib/antrianahass-client}"
+KIOSK_USER="${KIOSK_USER:-}"
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -51,6 +53,20 @@ URL="http://${PC_HOST}:${PORT}/"
 
 if [ "$DRY" != "1" ]; then
   [ "$(id -u)" = "0" ] || die "Jalankan sebagai root: sudo bash pc/client/install.sh --pc=IP-PC"
+fi
+
+# Nama NetBIOS PC bisa berbeda dari nama host yang diketik user (mis. "PC-KASIR"
+# vs "DESKTOP-AB12CD"). Uji dua-duanya, pakai yang benar-benar menjawab.
+PC_SHORT="${PC_HOST%%.*}"
+PC_TARGET="http://${PC_HOST}:${PORT}/"
+if [ "$PC_SHORT" != "$PC_HOST" ] && command -v curl >/dev/null 2>&1; then
+  if ! curl -fs -m 4 -o /dev/null "http://${PC_HOST}:${PORT}/__ahass/api/health" 2>/dev/null \
+     && curl -fs -m 4 -o /dev/null "http://${PC_SHORT}:${PORT}/__ahass/api/health" 2>/dev/null; then
+    warn "Nama panjang tidak menjawab, tetapi '$PC_SHORT' menjawab - memakai itu."
+    PC_HOST="$PC_SHORT"
+    URL="http://${PC_HOST}:${PORT}/"
+    PC_TARGET="$URL"
+  fi
 fi
 
 echo
@@ -170,7 +186,7 @@ ok "Layanan layar dinyalakan."
 
 # -------------------------------------------------------------- 4. jaringan
 if [ "$DRY" != "1" ]; then
-  HEALTH="$(curl -fs -m 5 "http://${PC_HOST}:${PORT}/__ahass/api/health" 2>/dev/null || true)"
+  HEALTH="$(curl -fs -m 5 "${PC_TARGET}__ahass/api/health" 2>/dev/null || true)"
   if [ -n "$HEALTH" ]; then
     ok "PC menjawab dari STB: $(printf '%s' "$HEALTH" | cut -c1-100)"
   else

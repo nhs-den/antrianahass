@@ -53,6 +53,8 @@ img { display: block; }
 .shell {
   height: 100vh;
   height: 100dvh;
+  /* Edge/Chrome di Windows 10 memotong 100vh; 100% mengikuti iframe/induk. */
+  height: 100%;
   display: grid;
   grid-template-columns: var(--left) minmax(0, 1fr);
   gap: var(--gap);
