@@ -563,6 +563,21 @@ sudo gh auth setup-git
 **Cara tercepat tanpa git/SSH (paling cocok untuk kiosk):** unduh ZIP lewat
 browser (tombol **Code → Download ZIP**), lalu timpa folder lama.
 
+**Bila `sudo gh auth status` sudah "Logged in" (cara paling cepat):**
+
+```bash
+sudo gh config set git_protocol https    # sesi Anda tadi diset ke ssh
+sudo gh auth setup-git                   # tulis credential helper di /root/.gitconfig
+sudo git clone https://github.com/nhs-den/antrianahass.git /opt/antrianahass
+```
+
+Bila masih ditanya username, pakai token yang sudah tersimpan di gh:
+
+```bash
+sudo git clone https://$(sudo gh auth token)@github.com/nhs-den/antrianahass.git /opt/antrianahass
+sudo git -C /opt/antrianahass remote set-url origin https://github.com/nhs-den/antrianahass.git
+```
+
 **Dengan Personal Access Token (repo privat):** buat token di
 <https://github.com/settings/tokens> (scope `repo`), lalu:
 
