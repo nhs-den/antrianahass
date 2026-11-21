@@ -541,6 +541,38 @@ sudo bash deploy/uninstall.sh --purge   # hapus aplikasi + data
 
 ### `git clone` private repo gagal: "Password authentication is not supported"
 
+> **DietPi minimal tidak punya `ssh-keygen`/`ssh`** (`ssh-keygen: command not found`,
+> `cannot run ssh`). Semua cara berbasis SSH baru bisa dipakai setelah:
+> `sudo apt update && sudo apt install -y openssh-client`
+
+**Cek dulu apakah `gh` benar-benar punya sesi login untuk user yang sedang dipakai:**
+
+```bash
+gh auth status                 # sebagai dietpi
+sudo gh auth status            # sebagai root (dipakai `sudo git clone`)
+```
+
+Kalau yang satu bilang *"You are not logged into any GitHub hosts"*, login-nya
+berada di user lain. Ulangi di user yang dipakai, misal:
+
+```bash
+sudo gh auth login             # bila ingin `sudo git clone` bekerja
+sudo gh auth setup-git
+```
+
+**Cara tercepat tanpa git/SSH (paling cocok untuk kiosk):** unduh ZIP lewat
+browser (tombol **Code → Download ZIP**), lalu timpa folder lama.
+
+**Dengan Personal Access Token (repo privat):** buat token di
+<https://github.com/settings/tokens> (scope `repo`), lalu:
+
+```bash
+sudo git clone https://<TOKEN>@github.com/nhs-den/antrianahass.git /opt/antrianahass
+# setelah selesai, simpan remote tanpa token agar tidak tertinggal di config:
+sudo git -C /opt/antrianahass remote set-url origin https://github.com/nhs-den/antrianahass.git
+```
+
+
 GitHub **tidak menerima password akun** untuk operasi git. Dua pilihan:
 
 ```bash
@@ -566,6 +598,18 @@ sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
 - ZIP `refs/heads/main` tidak memerlukan login bila repo bersifat publik; untuk
   repo privat unduh ZIP lewat browser (tombol **Code → Download ZIP**) lalu
   unggah ke perangkat (`scp`/flashdisk).
+
+### Memulihkan setelah `/opt/antrianahass` terhapus
+
+Data di `/var/lib/antrianahass` (config, password admin, logo) **tidak ikut terhapus**.
+Setelah kode kembali ke `/opt/antrianahass`:
+
+```bash
+sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
+```
+
+Installer akan memakai ulang konfigurasi yang sudah ada — tidak perlu mengisi
+ulang alamat DDMS, user/password, logo, maupun kotak 4 & 5.
 
 ## 9. Tips performa di Intel Compute Stick
 
