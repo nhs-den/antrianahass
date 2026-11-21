@@ -496,8 +496,21 @@ Tidak perlu instalasi ulang. Kode dan data dipisah:
 | `/var/lib/antrianahass` | `config.json`, password admin, `secret.key`, logo unggahan | **tidak disentuh** |
 
 ```bash
-cd /root/antrianahass
+# di Raspberry Pi, folder hasil `git clone` ada di /opt/antrianahass
+cd /opt/antrianahass
 sudo bash deploy/update.sh
+
+# di Intel Compute Stick (folder lama), sesuaikan:
+#   cd /root/antrianahass
+```
+
+Agar `git pull` di skrip itu berhasil tanpa menanyakan username/password,
+sekali saja jalankan:
+
+```bash
+gh auth setup-git          # memakai login `gh auth login` yang sudah ada
+# atau, bila memakai SSH:
+git -C /opt/antrianahass remote set-url origin git@github.com:nhs-den/antrianahass.git
 ```
 
 `deploy/update.sh` melakukan: `git pull` → salin kode baru → restart panel & layar
@@ -525,6 +538,34 @@ sudo bash deploy/uninstall.sh --purge   # hapus aplikasi + data
 ```
 
 ---
+
+### `git clone` private repo gagal: "Password authentication is not supported"
+
+GitHub **tidak menerima password akun** untuk operasi git. Dua pilihan:
+
+```bash
+# 1) Paling mudah: setelah `gh auth login`, sambungkan gh ke git (sekali saja)
+gh auth setup-git
+sudo git clone https://github.com/nhs-den/antrianahass.git /opt/antrianahass
+
+# 2) Tanpa git sama sekali (paling aman untuk perangkat kiosk):
+#    unduh ZIP lalu timpa folder
+cd /tmp
+wget -O ahass.zip https://codeload.github.com/nhs-den/antrianahass/zip/refs/heads/main
+unzip -q ahass.zip -d /tmp/ahass-baru
+sudo rm -rf /opt/antrianahass
+sudo mv /tmp/ahass-baru/antrianahass-main /opt/antrianahass
+sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
+```
+
+- **Jangan** mengetik token/password di prompt `Username for 'https://github.com'` —
+  itulah yang menyebabkan `Invalid username or token`.
+- `gh auth login` menyimpan sesi untuk user biasa; `sudo git ...` berjalan sebagai
+  root dan **tidak** memakai sesi tersebut. Karena itu pakai `gh auth setup-git`
+  (mengisi credential helper), SSH key, atau ZIP.
+- ZIP `refs/heads/main` tidak memerlukan login bila repo bersifat publik; untuk
+  repo privat unduh ZIP lewat browser (tombol **Code → Download ZIP**) lalu
+  unggah ke perangkat (`scp`/flashdisk).
 
 ## 9. Tips performa di Intel Compute Stick
 
