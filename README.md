@@ -70,7 +70,7 @@ total di bawah 400 MB.
 > Detail: [`stb/README.md`](stb/README.md).
 
 > **Mau satu PC melayani beberapa STB?** Server cukup dipasang di PC:
-> `sudo bash pc/install.sh` (Linux) atau `.\pc\windows\install-service.ps1` (Windows),
+> `sudo bash pc/install.sh` (Linux) atau `powershell -ExecutionPolicy Bypass -File .\pc\windows\install.ps1` (Windows 10),
 > lalu tiap STB hanya menampilkan `http://IP-PC:8080/`.
 > Detail: [`pc/README.md`](pc/README.md).
 
@@ -467,7 +467,7 @@ antrianahass/
 ├── pc/                       # server di PC + pemasang layar STB (LAN)
 │   ├── install.sh            # server PC (systemd)
 │   ├── doctor.js             # cek jalur PC→STB, cetak IP yang benar
-│   ├── windows/              # Windows Service (PowerShell, tanpa NSSM)
+│   ├── windows/              # pemasang Windows 10: Node+service+autostart
 │   └── client/               # layar STB: kiosk ke http://IP-PC:8080/
 ├── stb/                      # pemasang khusus STB Amlogic (Armbian/ophub)
 │   ├── one-click.sh          # curl | sudo bash

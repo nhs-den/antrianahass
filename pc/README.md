@@ -63,29 +63,85 @@ sudo bash pc/install.sh --dry-run
 Aman dijalankan berulang. `/var/lib/antrianahass` (DDMS, password admin, logo,
 ulasan) tidak pernah ditimpa.
 
-### Windows
+### Windows 10 (satu perintah, termasuk paket)
 
-Buka **PowerShell sebagai Administrator**, dari folder repo:
+Buka **PowerShell sebagai Administrator** — klik Start, ketik `powershell`,
+klik kanan → **Run as administrator** — lalu masuk ke folder repo dan jalankan:
+
+Cara paling mudah: buka folder repo di File Explorer, klik kanan
+**`pc\windows\install.cmd`** → **Run as administrator**. Berkas itu meminta hak
+admin sendiri lalu menjalankan `install.ps1`.
+
+Atau lewat PowerShell:
 
 ```powershell
-.\pc\windows\install-service.ps1
+cd C:\Users\NAMA-ANDA\antrianahass
+powershell -NoProfile -ExecutionPolicy Bypass -File .\pc\windows\install.ps1
 ```
 
-Skrip itu menyalin aplikasi ke `C:\Program Files\antrianahass`, menyimpan data
-di `C:\ProgramData\antrianahass`, mendaftarkan **Windows Service `AhassPanel`**
-(restart otomatis bila mati), membuka port 8080 di firewall, lalu memverifikasi
-`/__ahass/api/health`.
+`-ExecutionPolicy Bypass` hanya berlaku untuk satu kali jalan itu, jadi
+kebijakan skrip Windows tidak perlu diubah permanen.
+
+Yang dipasang otomatis:
+
+| Langkah | Hasil |
+|---|---|
+| **Paket** | Node.js LTS resmi (msi dari nodejs.org, diverifikasi tanda tangannya) + git portable bila repo belum ada di PC. Tanpa NSSM, tanpa Python, tanpa build tools. |
+| **Aplikasi** | `C:\Program Files\antrianahass` (robocopy, aman diulang) |
+| **Data** | `C:\ProgramData\antrianahass` — DDMS, logo, ulasan, password admin. **Tidak pernah ditimpa.** |
+| **Konfigurasi** | `C:\ProgramData\antrianahass\conf\pc.env` (port, host, batas heap) |
+| **Autostart** | Windows Service **`AhassPanel`** → `start= delayed-auto` + restart otomatis 5 s / 15 s / 60 s |
+| **Layar fullscreen PC** | Shortcut Startup + watchdog VBS + entri `Run`: Edge mode `--app --start-fullscreen`, otomatis dibuka lagi 20 detik setelah ditutup/crash |
+| **Firewall** | aturan `Panel AHASS (8080)` untuk profil **Private + Domain** |
+| **Shortcut** | "Panel AHASS" di Desktop |
+| **Verifikasi** | memanggil `/__ahass/api/health` sampai 40 detik, lalu mencetak URL LAN + password admin |
+
+Contoh keluaran akhir:
+
+```
+[ ok ] Service AhassPanel: Running
+[ ok ] Server menjawab: http://127.0.0.1:8080/__ahass/api/health
+=============================================================
+[ ok ] Server panel AHASS siap dipakai STB.
+  Alamat LAN   : http://192.168.1.10:8080/
+  Admin        : http://localhost:8080/admin
+  Password     : xxxxxxxx
+```
 
 Opsi:
 
 ```powershell
-.\pc\windows\install-service.ps1 -Port 9090    # ganti port
-.\pc\windows\install-service.ps1 -Remove       # lepas service
-Get-Content C:\ProgramData\antrianahass\logs\panel.log -Tail 40   # log
+.\pc\windows\install.ps1 -Port 9090            # ganti port
+.\pc\windows\install.ps1 -NoDeps               # Node/git sudah ada
+.\pc\windows\install.ps1 -NoFirewall           # jangan sentuh firewall
+.\pc\windows\install.ps1 -SkipStartupShortcut  # server saja, tanpa layar fullscreen
+.\pc\windows\install.ps1 -Remove               # lepas autostart, data tetap
+.\pc\windows\install.ps1 -Purge                # lepas + hapus data
+Get-Content C:\ProgramData\antrianahass\logs\panel.log -Tail 40    # log
 ```
 
-Butuh Node.js 18+ dari [nodejs.org](https://nodejs.org) (centang *Add to PATH*).
-Tidak perlu NSSM — service memakai wrapper `powershell.exe` bawaan Windows.
+**Autostart bekerja dua lapis**, sengaja:
+
+1. **Windows Service** — hidup sebelum ada yang login, jadi STB sudah bisa
+   memuat panel walau PC baru menyala dan belum ada user login.
+2. **Watcher layar** — Edge `--app` fullscreen; kalau ada yang menutupnya atau
+   Edge crash, panel terbuka lagi dalam ≤20 detik. Ini yang membuat PC juga
+   berfungsi sebagai layar, bukan hanya server.
+
+Service dijalankan sebagai **SYSTEM** (tanpa password akun, tanpa prompt UAC)
+melalui `node.exe windows\launcher.js` — satu proses, tanpa jendela konsol, dan
+berhenti bersih sehingga port 8080 tidak tertahan saat restart.
+
+> Rincian perawatan Windows (update, ganti port, service gagal start,
+> cadangan) ada di [`windows/windows-10.md`](windows/windows-10.md).
+
+> **Penting:** beri PC **IP statis / DHCP reservation** di router. Kalau IP PC
+> berubah, layar STB akan kosong sampai installer dijalankan ulang dengan IP baru.
+
+Masalah paling sering di Windows 10: jaringan ditandai **Public**, sehingga
+aturan firewall Private/Domain tidak berlaku. Ubah di
+*Settings → Network & Internet → Wi‑Fi → Properties → Network profile → Private*.
+Installer memperingatkan ini bila profil Public aktif.
 
 ### Setelah server jalan
 
@@ -208,8 +264,10 @@ pc/
 ├── doctor.js                   # cek jalur PC↔STB, cetak alamat LAN yang benar
 ├── units/ahass-pc.service      # Node :8080, HOST=0.0.0.0, MemoryMax=768M
 ├── windows/
-│   ├── install-service.ps1     # server sebagai Windows Service + firewall
-│   └── runner.ps1              # wrapper proses untuk service
+│   ├── install.cmd             # satu-klik: minta admin lalu jalankan install.ps1
+│   ├── install.ps1             # pemasang lengkap Windows 10 (paket+service+autostart)
+│   ├── launcher.js             # entry point service: pc.env → server.js + log
+│   └── windows-10.md           # perawatan: update, port, service gagal, cadangan
 └── client/
     ├── install.sh              # pemasang layar STB (tanpa server)
     ├── uninstall.sh            # lepas layar STB
