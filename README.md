@@ -180,6 +180,8 @@ melalui menu **Keamanan**.
 | **Kotak 4 · Gambar** | Tambah / hapus / urutkan gambar |
 | **Kotak 5 · Video** | Tambah / hapus / urutkan video |
 | **Tampilan** | Lebar panel kiri (20–60%), jeda rotasi, tema, format jam, sembunyikan kursor |
+| **Tampilan → Pas layar** | Skala panel 50–100% + tombol geser ◀▶▲▼ (4 px/klik) untuk mengoreksi overscan TV |
+| **Tampilan → Resolusi** | Set mode HDMI dari admin (Pi): 1080p/720p/1360x768/1600x900… lalu reboot otomatis |
 | **Keamanan** | Ganti password admin |
 
 Semua perubahan **langsung diterapkan ke layar kiosk** lewat Server-Sent Events —
@@ -349,6 +351,23 @@ Cukup tempel link — jenis media dikenali otomatis:
 - Tombol ↑ ↓ untuk mengatur urutan, ✕ untuk menghapus.
 
 ---
+
+### Panel tidak fullscreen / layout bertumpuk
+
+Jendela Chromium lebih kecil dari layar → panel kiri pindah ke bawah. Penyebabnya
+tidak ada **window manager** di kiosk (Chromium mengabaikan `--kiosk` tanpa WM).
+Installer Raspberry terbaru memasang `matchbox-window-manager`; untuk pemasangan
+lama jalankan ulang `sudo bash raspberry/install.sh --no-deps`.
+
+### Tepi layar terpotong (overscan TV)
+
+Admin → **Tampilan → Pas agar tidak terpotong**: turunkan skala ke 94–96% lalu
+geser dengan tombol ◀ ▶ ▲ ▼. Perubahan langsung terlihat di layar kiosk.
+
+### `/dev/fb0: Permission denied` di log Xorg
+
+Unit kiosk kini memuat `SupplementaryGroups=video render input audio`. Tanpa itu,
+`Group=` mengganti grup utama dan proses tidak boleh membuka framebuffer.
 
 ## 8. Perintah harian
 

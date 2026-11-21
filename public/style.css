@@ -19,6 +19,10 @@
   --warn: #f59e0b;
   --radius: 12px;
   --left: 30%;
+  /* Penskalaan & geser untuk mengoreksi overscan TV (diatur dari admin). */
+  --screen-scale: 1;
+  --screen-x: 0px;
+  --screen-y: 0px;
   color-scheme: dark;
 }
 
@@ -51,10 +55,12 @@ html, body {
 img { display: block; }
 
 .shell {
-  height: 100vh;
-  height: 100dvh;
-  /* Edge/Chrome di Windows 10 memotong 100vh; 100% mengikuti iframe/induk. */
-  height: 100%;
+  /* Skala (persen dari admin). Dihitung ke ukuran dulu supaya grid ikut
+     menyusut, lalu digeser. Lebih murah daripada transform: scale() penuh. */
+  width: calc(100% / var(--screen-scale));
+  height: calc(100% / var(--screen-scale));
+  transform: scale(var(--screen-scale)) translate(var(--screen-x), var(--screen-y));
+  transform-origin: 0 0;
   display: grid;
   grid-template-columns: var(--left) minmax(0, 1fr);
   gap: var(--gap);
@@ -445,24 +451,28 @@ img { display: block; }
 
 /* --------------------------------------------------------- responsif */
 
-/* layar sempit / tegak (mis. monitor portrait atau tablet) */
+/* layar sempit / tegak (mis. monitor portrait atau tablet).
+   Hanya di luar mode kiosk: panel kiosk harus selalu dua kolom, karena kalau
+   jendela Chromium tidak fullscreen (tanpa WM) layout bertumpuk dan DDMS
+   terpotong. Penanda .kiosk ada di <body>. */
 @media (max-width: 900px), (max-aspect-ratio: 1/1) {
-  .shell {
+  body:not(.kiosk) .shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
   }
-  .panel {
+  body:not(.kiosk) .panel {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: minmax(0, 1fr);
     order: 2;
   }
-  .box { padding: 7px 9px; }
-  .clock { grid-column: span 2; }
-  .reviews { grid-column: span 2; }
-  .images, .videos { grid-column: span 1; }
-  .stage { order: 1; }
-  .media-empty small { display: none; }
+  body:not(.kiosk) .box { padding: 7px 9px; }
+  body:not(.kiosk) .clock { grid-column: span 2; }
+  body:not(.kiosk) .reviews { grid-column: span 2; }
+  body:not(.kiosk) .images,
+  body:not(.kiosk) .videos { grid-column: span 1; }
+  body:not(.kiosk) .stage { order: 1; }
+  body:not(.kiosk) .media-empty small { display: none; }
 }
 
 @media (max-width: 520px) {

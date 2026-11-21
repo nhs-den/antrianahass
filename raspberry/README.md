@@ -169,6 +169,7 @@ detik, panel-lah yang lambat — periksa `systemctl status ahass-panel`.
 raspberry/
 ├── install.sh                # pemasang utama (idempoten)
 ├── uninstall.sh              # pelepas (opsional --purge)
+├── screen-fix.sh             # perbaikan layar bertahap + verifikasi piksel
 ├── kiosk-desktop.sh          # launcher mode desktop: tunggu panel + watchdog + log
 ├── chromium-flags.conf       # flag Chromium untuk RAM 1 GB
 ├── units/
@@ -185,7 +186,101 @@ raspberry/
 
 ---
 
-## 5. Hemat memori di 1 GB
+## 5. Kalau layar hitam, terpotong, atau tidak fullscreen
+
+Tiga masalah berbeda, dengan obat yang berbeda. Cek berurutan — jangan menebak.
+
+### 5.1 Layar hitam + kursor berkedip
+
+```bash
+sudo bash /opt/antrianahass/raspberry/screen-fix.sh
+```
+
+Skrip itu mencoba tiga langkah dan **membuktikan** hasilnya dengan membaca isi
+layar lewat `xwd` (layar hitam tidak dianggap berhasil):
+
+| Langkah | Yang diubah | Untuk kasus |
+|---|---|---|
+| 0 | apa adanya | GPU/driver normal |
+| 1 | `+ --disable-gpu` | driver Mali/VC4 bermasalah di Chromium |
+| 2 | `xserver-xorg-legacy` + layar sebagai root | Xorg tidak boleh membuka TTY sebagai non-root |
+| 3 | diagnosa lengkap | sisanya: kirim keluarannya |
+
+Reset semua perubahan: `sudo bash /opt/antrianahass/raspberry/screen-fix.sh --reset`
+Hanya melapor tanpa mengubah: `... --diagnose`
+
+### 5.2 Panel tidak fullscreen / layout jadi bertumpuk
+
+Gejala: panel kiri (jam/logo) pindah ke **bawah**, dan jendela Chromium lebih
+kecil dari layar.
+
+```bash
+sudo -u dietpi DISPLAY=:0 xwininfo -root -tree | tr -d '\000' \
+  | sed -n 's/.*"AHASS[^"]*".*  \([0-9]*x[0-9]*[+-][0-9]*[+-][0-9]*\).*/\1/p' | head -1
+sudo -u dietpi DISPLAY=:0 xdpyinfo | grep dimensions
+```
+
+Kalau geometri jendela ≠ ukuran layar, penyebabnya **tidak ada window manager**:
+Chromium mengabaikan `--kiosk` tanpa WM. Installer sekarang memasang
+`matchbox-window-manager` dan menjalankan lewat `/usr/local/bin/ahass-kiosk-boot.sh`.
+Untuk memperbaikinya pada pemasangan lama:
+
+```bash
+sudo apt-get install -y matchbox-window-manager
+sudo bash /opt/antrianahass/raspberry/install.sh --no-deps
+```
+
+### 5.3 Tepi layar terpotong (overscan TV)
+
+Gejala: jam terpotong di kiri, "Refresh In …" terpotong di kanan, atau ada
+bingkai hitam di tepi.
+
+Buka **admin → Tampilan → "Pas agar tidak terpotong (overscan TV)"**:
+
+- turunkan **Skala panel** ke 94–96%,
+- geser dengan tombol **◀ ▶ ▲ ▼** (1 klik = 4 px) sampai tepi terlihat,
+- tekan **Simpan pas layar** — layar kiosk berubah seketika, tanpa restart.
+
+Kalau masih ada bingkai hitam dari TV itu sendiri, nyalakan
+**"Matikan overscan TV"** di bagian Resolusi (atau di TV: *Picture → Aspect →
+16:9 / Just Scan*).
+
+### 5.4 Resolusi salah (mis. TV 1080p tapi tampil 720p)
+
+Admin → **Tampilan → Resolusi layar perangkat** → pilih mode → **Terapkan &
+reboot**.
+
+Yang dilakukan aplikasi:
+
+1. menghapus `hdmi_group` / `hdmi_mode` lama di `/boot/firmware/config.txt`,
+2. **menghapus `framebuffer_width` / `framebuffer_height`** — baris ini
+   mengunci resolusi lebih kuat daripada `hdmi_mode`, jadi perubahan mode tidak
+   akan terlihat selama baris tersebut ada,
+3. menulis `hdmi_group=1` + `hdmi_mode` yang cocok (1080p60 = mode 16),
+4. mencadangkan berkas ke `config.txt.bak-ahass`, lalu reboot 2 detik kemudian.
+
+Alternatif dari terminal:
+
+```bash
+sudo bash /opt/antrianahass/raspberry/install.sh --resolution=1920x1080 --no-deps
+sudo reboot
+```
+
+Kalau opsi itu tidak tersedia (bukan Raspberry Pi), halaman admin akan
+mengatakannya dan menyarankan `dietpi-config`.
+
+### 5.5 Urutan diagnosis yang cepat
+
+```bash
+curl -s http://127.0.0.1:8080/__ahass/api/health; echo   # panel hidup?
+ls -l /tmp/.X11-unix/                                    # X hidup? (harus ada X0)
+pgrep -af "Xorg|chromium" | head -3                      # proses ada?
+sudo bash /opt/antrianahass/raspberry/screen-fix.sh --diagnose
+```
+
+Panel **harus** menjawab sebelum layar bisa menampilkan apa pun.
+
+## 6. Hemat memori di 1 GB
 
 Anggaran kasar saat layar berjalan:
 
@@ -212,7 +307,7 @@ Pi 3 B+.
 
 ---
 
-## 6. MicroSD 16 GB tetap awet
+## 7. MicroSD 16 GB tetap awet
 
 Installer sudah menerapkan:
 
@@ -234,7 +329,7 @@ Hindari swapfile di microSD; pakai zram (bawaan DietPi).
 
 ---
 
-## 7. Widget ulasan Google (kotak 3)
+## 8. Widget ulasan Google (kotak 3)
 
 Widget ulasan adalah aplikasi terpisah di port **3000**. Di Pi 3 B+ aplikasi
 Node tambahan itu ikut memakan 60–120 MB RAM, jadi pertimbangkan dulu:
@@ -257,7 +352,7 @@ berjalan normal tanpa widget.
 
 ---
 
-## 8. Memperbarui tanpa pemasangan ulang
+## 9. Memperbarui tanpa pemasangan ulang
 
 ```bash
 cd ~/antrianahass
@@ -275,7 +370,7 @@ sudo systemctl restart ahass-panel
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Gejala | Penyebab & solusi |
 |---|---|
@@ -291,7 +386,7 @@ sudo systemctl restart ahass-panel
 
 ---
 
-## 10. Menghapus
+## 11. Menghapus
 
 ```bash
 sudo bash ~/antrianahass/raspberry/uninstall.sh         # unit dihapus, data tetap
@@ -300,7 +395,7 @@ sudo bash ~/antrianahass/raspberry/uninstall.sh --purge # hapus data & pengguna 
 
 ---
 
-## 11. Catatan kompatibilitas
+## 12. Catatan kompatibilitas
 
 - Diuji secara struktur untuk DietPi arm64 (bookworm) dan Debian 12.
 - Node minimal **v18**; DietPi bookworm membawa v18 sehingga tidak perlu

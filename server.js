@@ -18,6 +18,7 @@ const statics = require('./lib/static');
 const ddms = require('./lib/ddms');
 const proxy = require('./lib/proxy');
 const ulasanPage = require('./lib/ulasan-page');
+const screen = require('./lib/screen');
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -88,6 +89,9 @@ function buildPatch(body) {
     const d = src.display;
     patch.display = {
       leftPercent: clampInt(d.leftPercent, 20, 60, 30),
+      scalePercent: clampInt(d.scalePercent, 50, 100, 100),
+      offsetX: clampInt(d.offsetX, -200, 200, 0),
+      offsetY: clampInt(d.offsetY, -200, 200, 0),
       clock24: d.clock24 !== false,
       showSeconds: d.showSeconds !== false,
       theme: d.theme === 'light' ? 'light' : 'dark',
@@ -353,6 +357,52 @@ async function handleApi(req, res, url) {
   if (p === '/__ahass/api/admin/reviews/clear-cache' && method === 'POST') {
     reviews.clearCache();
     util.sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/system/screen' && method === 'GET') {
+    try {
+      util.sendJson(res, 200, Object.assign({ ok: true }, screen.info()));
+    } catch (err) {
+      util.sendJson(res, 200, { ok: false, supported: false, error: err.message });
+    }
+    return;
+  }
+
+  if (p === '/__ahass/api/admin/system/resolution' && method === 'POST') {
+    const body = await util.readJson(req, 8 * 1024);
+    const width = Number(body && body.width) || 0;
+    const height = Number(body && body.height) || 0;
+    const overscan = !!(body && body.overscan);
+
+    if (!width && !height && !overscan) {
+      util.sendJson(res, 400, { ok: false, error: 'Pilih resolusi atau centang matikan overscan.' });
+      return;
+    }
+
+    try {
+      const result = screen.apply({ width, height, overscan });
+      // Jawab dulu, reboot menyusul: kalau reboot dipicu sebelum respons
+      // terkirim, browser admin akan melihat "network error" yang
+      // membingungkan padahal perubahan sudah tersimpan.
+      util.sendJson(res, 200, {
+        ok: true,
+        changed: result.changes,
+        file: result.file,
+        message: 'Setelan layar disimpan (' + (result.changes.join(', ') || 'tanpa perubahan') + '). Perangkat akan reboot dalam 2 detik.'
+      });
+      util.log('Layar: ' + result.changes.join(', ') + ' → reboot');
+      setTimeout(() => {
+        try {
+          require('child_process').spawn('systemctl', ['reboot'], { detached: true, stdio: 'ignore' }).unref();
+        } catch (err) {
+          util.log('Reboot gagal dijalankan: ' + err.message);
+        }
+      }, 2000);
+    } catch (err) {
+      const code = err.code === 'INVALID' ? 400 : 200;
+      util.sendJson(res, code, { ok: false, error: err.message, unsupported: err.code === 'UNSUPPORTED' });
+    }
     return;
   }
 

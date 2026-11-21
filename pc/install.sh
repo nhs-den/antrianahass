@@ -103,6 +103,10 @@ else
   find "$APP_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
   cp -a "$SRC_DIR/." "$APP_DIR/"
   rm -rf "$APP_DIR/.git" "$APP_DIR/data" "$APP_DIR/node_modules"
+  # umask root bisa 077; service berjalan sebagai 'ahass' harus bisa chdir.
+  chown -R root:root "$APP_DIR"
+  chmod 755 "$APP_DIR"
+  chmod -R a+rX "$APP_DIR"
 fi
 run mkdir -p "$DATA_DIR/uploads" "$DATA_DIR/logos"
 ok "Aplikasi tersalin."

@@ -9,6 +9,8 @@ After=getty@tty1.service
 [Service]
 User=__KIOSK_USER__
 Group=__KIOSK_USER__
+# Group= mengganti grup utama; tanpa baris ini /dev/fb0 (root:video) ditolak.
+SupplementaryGroups=video render input audio
 PAMName=login
 TTYPath=/dev/tty1
 TTYReset=yes
