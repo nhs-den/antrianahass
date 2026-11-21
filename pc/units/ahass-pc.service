@@ -1,0 +1,37 @@
+[Unit]
+Description=Panel Display AHASS - server di PC (dipakai bersama STB lewat LAN)
+Documentation=file:///opt/antrianahass/pc/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ahass
+Group=ahass
+WorkingDirectory=/opt/antrianahass
+Environment=NODE_ENV=production
+Environment=PORT=8080
+# Wajib 0.0.0.0 - kalau 127.0.0.1, STB tidak bisa menjangkau PC.
+Environment=HOST=0.0.0.0
+Environment=AHASS_DATA_DIR=/var/lib/antrianahass
+# PC jauh lebih lega dari STB; 512 MB cukup untuk puluhan layar STB.
+Environment=NODE_OPTIONS=--max-old-space-size=512
+ExecStart=/usr/bin/node /opt/antrianahass/server.js
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ahass-pc
+
+MemoryMax=768M
+TasksMax=256
+Nice=0
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=/var/lib/antrianahass
+
+[Install]
+WantedBy=multi-user.target
